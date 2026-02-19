@@ -1,22 +1,53 @@
-node {
-    stage('SCM') {
-        echo 'Obteniendo código desde Git...'
-        checkout scm
-    }
-    
-    stage('Build') {
-        echo 'Compilando el proyecto...'
-       
-        sh 'mvn clean package'
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven'                 // Nombre configurado en Jenkins (Global Tools)
+        jdk 'JDK'                     // Opcional si usas Java
     }
 
-    stage('SonarQube Analysis') {
-        echo 'Analizando calidad con SonarQube...'
-       
-        def scannerHome = tool 'SonarScanner'
-       
-        withSonarQubeEnv('SonarQube') {
-            sh "${scannerHome}/bin/sonar-scanner"
+    stages {
+
+        stage('SCM') {
+            steps {
+                echo 'Obteniendo código desde Git...'
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Compilando el proyecto con Maven...'
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Ejecutando tests...'
+                sh 'mvn test'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo 'Analizando calidad con SonarQube...'
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build completado correctamente ✅'
+        }
+        failure {
+            echo 'Build fallido ❌'
         }
     }
 }
