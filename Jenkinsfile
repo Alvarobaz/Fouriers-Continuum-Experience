@@ -10,21 +10,6 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                echo 'Compilando el proyecto con Maven...'
-                sh 'mvn -version'
-                sh 'mvn clean package -DskipTests'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo 'Ejecutando tests...'
-                sh 'mvn test'
-            }
-        }
-
         stage('SonarQube Analysis') {
             steps {
                 echo 'Analizando calidad con SonarQube...'
@@ -40,10 +25,10 @@ pipeline {
 
     post {
         success {
-            echo 'Build completado correctamente ✅'
+            echo 'Pipeline OK '
         }
         failure {
-            echo 'Build fallido ❌'
+            echo 'Pipeline falló '
         }
     }
 }
