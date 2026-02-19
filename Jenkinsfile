@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven'                 // Nombre configurado en Jenkins (Global Tools)
-        jdk 'JDK'                     // Opcional si usas Java
-    }
-
     stages {
 
         stage('SCM') {
@@ -18,6 +13,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Compilando el proyecto con Maven...'
+                sh 'mvn -version'
                 sh 'mvn clean package -DskipTests'
             }
         }
