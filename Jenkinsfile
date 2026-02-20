@@ -1,11 +1,21 @@
 pipeline {
     agent any
 
+    environment {
+        // Fix para Node/OpenSSL
+        NODE_OPTIONS = '--openssl-legacy-provider'
+    }
+
     stages {
 
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
-                checkout scm
+                echo 'Obteniendo código desde Git...'
+                checkout([
+                    $class: 'GitSCM', 
+                    branches: [[name: '*/main']], 
+                    userRemoteConfigs: [[url: 'https://github.com/Alvarobaz/Fouriers-Continuum-Experience']]
+                ])
             }
         }
 
@@ -23,21 +33,18 @@ pipeline {
             steps {
                 echo 'Compilando Frontend Angular...'
                 dir('Front-End') {
-                    sh '''
-                        npm install
-                        npm run build
-                    '''
+                    sh 'npm install'
+                    // Aquí usamos la variable NODE_OPTIONS que definimos arriba
+                    sh 'npm run build'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                echo 'Ejecutando análisis SonarQube...'
+                echo 'Analizando calidad con SonarQube...'
                 withSonarQubeEnv('SonarQube') {
-                    dir('Back-End') {
-                        sh './mvnw sonar:sonar'
-                    }
+                    sh '/var/jenkins_home/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarScanner/bin/sonar-scanner'
                 }
             }
         }
@@ -45,7 +52,7 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completado correctamente ✅'
+            echo 'Pipeline completado ✅'
         }
         failure {
             echo 'Pipeline falló ❌'
