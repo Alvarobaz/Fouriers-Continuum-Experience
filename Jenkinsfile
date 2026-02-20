@@ -1,24 +1,16 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven'
-        jdk 'JDK21'
-        nodejs 'NodeJS'   // Debe estar configurado en Jenkins
-    }
-
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Clonando repositorio...'
                 checkout scm
             }
         }
 
         stage('Build Backend') {
             steps {
-                echo 'Compilando Backend...'
                 dir('backend') {
                     sh 'mvn clean compile'
                 }
@@ -27,7 +19,6 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                echo 'Compilando Frontend...'
                 dir('frontend') {
                     sh '''
                         npm install
@@ -39,11 +30,10 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                echo 'Analizando código con SonarQube...'
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         sonar-scanner \
-                        -Dsonar.sources=. \
+                        -Dsonar.sources=backend,frontend \
                         -Dsonar.java.binaries=backend/target/classes
                     '''
                 }
