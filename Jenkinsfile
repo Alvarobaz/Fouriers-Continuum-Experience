@@ -1,6 +1,10 @@
 pipeline {
     agent any
-
+    environment {
+        // Ajusta según la instalación de Node en tu Jenkins
+        NODEJS_HOME = '/usr/local/bin/node'
+        PATH = "${env.NODEJS_HOME}:${env.PATH}"
+    }
     stages {
         stage('Checkout SCM') {
             steps {
@@ -23,15 +27,24 @@ pipeline {
             steps {
                 echo 'Compilando Frontend Angular...'
                 dir('Front-End') {
-                    sh 'npm ci'  // Instala dependencias
-                    sh 'ng build --source-map=false'
+                    // Limpiar node_modules y lock file solo si quieres regenerarlo en CI
+                    // sh 'rm -rf node_modules package-lock.json'
+                    
+                    // Instalación segura de dependencias
+                    sh 'npm install'
+                    
+                    // Construir Angular
+                    sh 'npm run build'
                 }
             }
         }
     }
-
     post {
-        success { echo 'Pipeline finalizado ✅' }
-        failure { echo 'Pipeline falló ❌' }
+        success {
+            echo 'Pipeline completado ✅'
+        }
+        failure {
+            echo 'Pipeline falló ❌'
+        }
     }
 }
