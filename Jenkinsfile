@@ -12,7 +12,7 @@ pipeline {
         stage('Build Backend') {
             steps {
                 echo 'Compilando Backend...'
-                dir('Carpeta proyecto') {
+                dir('Back-End') {
                     sh 'chmod +x mvnw'
                     sh './mvnw clean compile'
                 }
@@ -22,10 +22,10 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 echo 'Compilando Frontend Angular...'
-                dir('frontend') {
+                dir('Front-End') {
                     sh '''
                         npm install
-                        npm run build -- --configuration production
+                        npm run build
                     '''
                 }
             }
@@ -35,7 +35,7 @@ pipeline {
             steps {
                 echo 'Ejecutando análisis SonarQube...'
                 withSonarQubeEnv('SonarQube') {
-                    dir('Carpeta proyecto') {
+                    dir('Back-End') {
                         sh './mvnw sonar:sonar'
                     }
                 }
