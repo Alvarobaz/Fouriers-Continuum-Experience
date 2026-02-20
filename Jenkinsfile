@@ -27,10 +27,16 @@ pipeline {
             steps {
                 echo 'Compilando Frontend Angular...'
                 dir('Front-End') {
-                    // Instalación ignorando conflictos de peer dependencies
+                    // Limpia cualquier carpeta con permisos incorrectos
+                    sh 'rm -rf node_modules'
+                    
+                    // Asegura permisos completos para el usuario actual
+                    sh 'chmod -R 777 .'
+                    
+                    // Instala dependencias ignorando conflictos de peer deps
                     sh 'npm install --legacy-peer-deps'
                     
-                    // Compilar Angular
+                    // Construye Angular
                     sh 'npm run build'
                 }
             }
