@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven'           // Maven configurado en Jenkins
+        jdk 'JDK21'             // Usa el JDK que tengas configurado (ajusta el nombre si es distinto)
+    }
+
     stages {
 
         stage('SCM') {
@@ -10,14 +15,21 @@ pipeline {
             }
         }
 
+        stage('Build') {
+            steps {
+                echo 'Compilando proyecto Java con Maven...'
+                sh 'mvn clean compile'
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 echo 'Analizando calidad con SonarQube...'
-                script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        sh "${scannerHome}/bin/sonar-scanner"
-                    }
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        sonar-scanner \
+                        -Dsonar.java.binaries=target/classes
+                    '''
                 }
             }
         }
@@ -25,10 +37,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline OK '
+            echo 'Pipeline completado correctamente ✅'
         }
         failure {
-            echo 'Pipeline falló '
+            echo 'Pipeline falló ❌'
         }
     }
 }
