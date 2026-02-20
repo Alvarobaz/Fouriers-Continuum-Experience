@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        // Ajusta según la instalación de Node en tu Jenkins
+        // Ajusta la ruta de Node si es necesario en tu Jenkins
         NODEJS_HOME = '/usr/local/bin/node'
         PATH = "${env.NODEJS_HOME}:${env.PATH}"
     }
@@ -27,18 +27,16 @@ pipeline {
             steps {
                 echo 'Compilando Frontend Angular...'
                 dir('Front-End') {
-                    // Limpiar node_modules y lock file solo si quieres regenerarlo en CI
-                    // sh 'rm -rf node_modules package-lock.json'
+                    // Instalación ignorando conflictos de peer dependencies
+                    sh 'npm install --legacy-peer-deps'
                     
-                    // Instalación segura de dependencias
-                    sh 'npm install'
-                    
-                    // Construir Angular
+                    // Compilar Angular
                     sh 'npm run build'
                 }
             }
         }
     }
+
     post {
         success {
             echo 'Pipeline completado ✅'
