@@ -11,14 +11,14 @@ pipeline {
 
         stage('Build Backend') {
             steps {
-                dir('backend') {
-                    sh 'mvn clean compile'
-                }
+                echo 'Compilando proyecto Java...'
+                sh './mvnw clean compile'
             }
         }
 
         stage('Build Frontend') {
             steps {
+                echo 'Compilando frontend...'
                 dir('frontend') {
                     sh '''
                         npm install
@@ -30,11 +30,10 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
+                echo 'Ejecutando análisis SonarQube...'
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                        sonar-scanner \
-                        -Dsonar.sources=backend,frontend \
-                        -Dsonar.java.binaries=backend/target/classes
+                        ./mvnw sonar:sonar
                     '''
                 }
             }
