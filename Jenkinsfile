@@ -2,33 +2,49 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven'           // Maven configurado en Jenkins
-        jdk 'JDK21'             // Usa el JDK que tengas configurado (ajusta el nombre si es distinto)
+        maven 'Maven'
+        jdk 'JDK21'
+        nodejs 'NodeJS'   // Debe estar configurado en Jenkins
     }
 
     stages {
 
-        stage('SCM') {
+        stage('Checkout') {
             steps {
-                echo 'Obteniendo código desde Git...'
+                echo 'Clonando repositorio...'
                 checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Build Backend') {
             steps {
-                echo 'Compilando proyecto Java con Maven...'
-                sh 'mvn clean compile'
+                echo 'Compilando Backend...'
+                dir('backend') {
+                    sh 'mvn clean compile'
+                }
+            }
+        }
+
+        stage('Build Frontend') {
+            steps {
+                echo 'Compilando Frontend...'
+                dir('frontend') {
+                    sh '''
+                        npm install
+                        npm run build
+                    '''
+                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                echo 'Analizando calidad con SonarQube...'
+                echo 'Analizando código con SonarQube...'
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         sonar-scanner \
-                        -Dsonar.java.binaries=target/classes
+                        -Dsonar.sources=. \
+                        -Dsonar.java.binaries=backend/target/classes
                     '''
                 }
             }
