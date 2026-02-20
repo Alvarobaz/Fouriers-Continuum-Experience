@@ -11,18 +11,21 @@ pipeline {
 
         stage('Build Backend') {
             steps {
-                echo 'Compilando proyecto Java...'
-                sh './mvnw clean compile'
+                echo 'Compilando Backend...'
+                dir('Carpeta proyecto') {
+                    sh 'chmod +x mvnw'
+                    sh './mvnw clean compile'
+                }
             }
         }
 
         stage('Build Frontend') {
             steps {
-                echo 'Compilando frontend...'
+                echo 'Compilando Frontend Angular...'
                 dir('frontend') {
                     sh '''
                         npm install
-                        npm run build
+                        npm run build -- --configuration production
                     '''
                 }
             }
@@ -32,9 +35,9 @@ pipeline {
             steps {
                 echo 'Ejecutando análisis SonarQube...'
                 withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        ./mvnw sonar:sonar
-                    '''
+                    dir('Carpeta proyecto') {
+                        sh './mvnw sonar:sonar'
+                    }
                 }
             }
         }
