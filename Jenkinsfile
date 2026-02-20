@@ -2,33 +2,36 @@ pipeline {
     agent any
 
     stages {
-
-        stage('SCM') {
+        stage('Checkout SCM') {
             steps {
                 echo 'Obteniendo código desde Git...'
                 checkout scm
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Build Backend') {
             steps {
-                echo 'Analizando calidad con SonarQube...'
-                script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        sh "${scannerHome}/bin/sonar-scanner"
-                    }
+                echo 'Compilando Backend...'
+                dir('Back-End') {
+                    sh 'chmod +x mvnw'
+                    sh './mvnw clean compile'
+                }
+            }
+        }
+
+        stage('Build Frontend') {
+            steps {
+                echo 'Compilando Frontend Angular...'
+                dir('Front-End') {
+                    sh 'npm ci'  // Instala dependencias
+                    sh 'ng build --source-map=false'
                 }
             }
         }
     }
 
     post {
-        success {
-            echo 'Pipeline OK '
-        }
-        failure {
-            echo 'Pipeline falló '
-        }
+        success { echo 'Pipeline finalizado ✅' }
+        failure { echo 'Pipeline falló ❌' }
     }
 }
