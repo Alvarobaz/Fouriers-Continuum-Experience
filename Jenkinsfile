@@ -1,59 +1,60 @@
 pipeline {
     agent any
+
     environment {
-        NODE_VERSION = "10"
-        PATH = "${tool 'NodeJS_'+NODE_VERSION}/bin:${env.PATH}"
+        // No tocar, Jenkins asignará PATH según cada herramienta
     }
+
     stages {
-
-        stage('Preparar Front-End') {
+        stage('Checkout SCM') {
             steps {
-                dir('Front-End') {
-                    echo "🔹 Limpiando node_modules y package-lock.json..."
-                    sh '''
-                        # Elimina todo el contenido que pueda dar problemas
-                        rm -rf node_modules package-lock.json || true
-                        rm -rf dist || true
-                    '''
+                checkout scm
+            }
+        }
+
+        stage('Build Angular 8 (Node 10)') {
+            steps {
+                script {
+                    // Selecciona Node 10
+                    env.PATH = "${tool 'node10'}/bin:${env.PATH}"
+
+                    echo "Usando Node:"
+                    sh 'node -v'
+                    echo "Usando npm:"
+                    sh 'npm -v'
+
+                    // Instala dependencias y build Angular 8
+                    sh 'npm install'
+                    sh 'ng build --prod'
                 }
             }
         }
 
-        stage('Instalar dependencias') {
+        stage('Build New Feature (Node 18)') {
             steps {
-                dir('Front-End') {
-                    echo "🔹 Instalando dependencias con Node ${NODE_VERSION}..."
-                    sh 'npm install --legacy-peer-deps'
-                }
-            }
-        }
+                script {
+                    // Cambia a Node 18
+                    env.PATH = "${tool 'node18'}/bin:${env.PATH}"
 
-        stage('Build') {
-            steps {
-                dir('Front-End') {
-                    echo "🔹 Compilando aplicación Front-End..."
-                    sh 'npx ng build --prod || true'
-                }
-            }
-        }
+                    echo "Usando Node:"
+                    sh 'node -v'
+                    echo "Usando npm:"
+                    sh 'npm -v'
 
-        stage('SonarQube Analysis') {
-            when {
-                expression { return fileExists('Front-End/sonar-project.properties') }
-            }
-            steps {
-                echo "🔹 Ejecutando análisis SonarQube..."
-                sh 'sonar-scanner -Dproject.settings=Front-End/sonar-project.properties'
+                    // Instala dependencias de la nueva parte
+                    sh 'npm install'
+                    sh 'ng build --prod'
+                }
             }
         }
     }
 
     post {
         always {
-            echo "✅ Pipeline finalizado"
+            echo 'Pipeline finalizado ✅'
         }
         failure {
-            echo "❌ Pipeline falló"
+            echo 'Pipeline falló ❌'
         }
     }
 }
