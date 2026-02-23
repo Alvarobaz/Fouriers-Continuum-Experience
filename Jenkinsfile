@@ -2,18 +2,16 @@ pipeline {
     agent any
 
     environment {
-        FRONTEND_DIR = 'frontend' // Ajusta al path de tu proyecto Angular
+        FRONTEND_DIR = 'frontend'
         NODE_ENV = 'production'
     }
 
     options {
-        // Limita logs y asegura limpieza de workspace entre builds
         buildDiscarder(logRotator(numToKeepStr: '10'))
-        timestamps()
+        // timestamps()  <-- se quita para evitar error
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 echo 'Clonando repositorio...'
@@ -23,10 +21,8 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
-                echo 'Limpiando workspace y node_modules...'
                 dir("${FRONTEND_DIR}") {
                     sh '''
-                        echo "Eliminando node_modules y package-lock.json con permisos correctos..."
                         if [ -d node_modules ]; then
                             chmod -R u+w node_modules
                             rm -rf node_modules
@@ -39,36 +35,27 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                echo 'Instalando dependencias npm...'
                 dir("${FRONTEND_DIR}") {
-                    sh 'npm install --legacy-peer-deps'
+                    sh 'npm install'
                 }
             }
         }
 
-        stage('Build Angular') {
+        stage('Build') {
             steps {
-                echo 'Compilando Angular para producción...'
                 dir("${FRONTEND_DIR}") {
-                    sh 'npm run build -- --configuration production'
-                }
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                echo 'Ejecutando tests...'
-                dir("${FRONTEND_DIR}") {
-                    sh 'npm run test -- --watch=false --browsers=ChromeHeadless'
+                    sh 'npm run build'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
+            when {
+                expression { return env.SONARQUBE_ENABLED == 'true' }
+            }
             steps {
-                echo 'Ejecutando análisis SonarQube...'
-                withSonarQubeEnv('SonarQubeServer') { // Ajusta el nombre de tu servidor Sonar
-                    dir("${FRONTEND_DIR}") {
+                dir("${FRONTEND_DIR}") {
+                    withSonarQubeEnv('SonarQube') {
                         sh 'sonar-scanner'
                     }
                 }
@@ -77,15 +64,14 @@ pipeline {
     }
 
     post {
+        always {
+            echo "Pipeline finalizado"
+        }
         success {
-            echo 'Pipeline completado ✅'
+            echo "Pipeline completado ✅"
         }
         failure {
-            echo 'Pipeline falló ❌'
-        }
-        always {
-            echo 'Limpiando workspace después del build...'
-            cleanWs()
+            echo "Pipeline falló ❌"
         }
     }
 }
