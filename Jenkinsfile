@@ -2,40 +2,31 @@ pipeline {
     agent any
 
     environment {
-        FRONTEND_DIR = 'frontend'
         NODE_ENV = 'production'
     }
 
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        // timestamps()  <-- se quita para evitar error
-    }
-
     stages {
-        stage('Checkout') {
+
+        stage('Checkout SCM') {
             steps {
-                echo 'Clonando repositorio...'
                 checkout scm
             }
         }
 
         stage('Clean Workspace') {
             steps {
-                dir("${FRONTEND_DIR}") {
-                    sh '''
-                        if [ -d node_modules ]; then
-                            chmod -R u+w node_modules
-                            rm -rf node_modules
-                        fi
-                        rm -f package-lock.json
-                    '''
-                }
+                // Limpiamos node_modules y package-lock.json si existen
+                sh '''
+                [ -d node_modules ] && rm -rf node_modules
+                [ -f package-lock.json ] && rm -f package-lock.json
+                '''
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                dir("${FRONTEND_DIR}") {
+                dir('.') { // Apunta a la raíz del repo
+                    echo "Instalando dependencias..."
                     sh 'npm install'
                 }
             }
@@ -43,7 +34,8 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir("${FRONTEND_DIR}") {
+                dir('.') {
+                    echo "Construyendo la aplicación..."
                     sh 'npm run build'
                 }
             }
@@ -51,27 +43,24 @@ pipeline {
 
         stage('SonarQube Analysis') {
             when {
-                expression { return env.SONARQUBE_ENABLED == 'true' }
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
-                dir("${FRONTEND_DIR}") {
-                    withSonarQubeEnv('SonarQube') {
-                        sh 'sonar-scanner'
-                    }
+                dir('.') {
+                    echo "Ejecutando análisis de SonarQube..."
+                    // Ajusta esto según tu configuración de Sonar
+                    sh 'sonar-scanner'
                 }
             }
         }
     }
 
     post {
-        always {
-            echo "Pipeline finalizado"
-        }
         success {
-            echo "Pipeline completado ✅"
+            echo 'Pipeline finalizado correctamente ✅'
         }
         failure {
-            echo "Pipeline falló ❌"
+            echo 'Pipeline falló ❌'
         }
     }
 }
