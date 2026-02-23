@@ -16,8 +16,8 @@ pipeline {
             tools { nodejs 'node10' }
             steps {
                 dir('Front-End') {
-                    echo "Eliminando completamente el directorio para evitar problemas de permisos..."
-                    sh 'rm -rf ./* || true'  // borra todo el contenido del Front-End
+                    echo "Eliminando completamente el directorio Front-End para evitar problemas de permisos..."
+                    sh 'rm -rf ./* || true'  // borra TODO el contenido
                     echo "Instalando dependencias con Node 10..."
                     sh 'npm install --legacy-peer-deps'
                     echo "Construyendo la aplicación..."
