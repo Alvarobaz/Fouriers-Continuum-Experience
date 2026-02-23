@@ -13,22 +13,11 @@ pipeline {
             }
         }
 
-        stage('Clean Workspace') {
-            steps {
-                dir('Front-End') { // Entramos en la carpeta correcta
-                    sh '''
-                    [ -d node_modules ] && rm -rf node_modules
-                    [ -f package-lock.json ] && rm -f package-lock.json
-                    '''
-                }
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
-                dir('Front-End') { // Ahora npm busca package.json en Front-End
+                dir('Front-End') {
                     echo "Instalando dependencias..."
-                    sh 'npm install'
+                    sh 'npm ci'  // limpia e instala dependencias de forma segura
                 }
             }
         }
