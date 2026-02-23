@@ -19,7 +19,7 @@ pipeline {
                     sh 'node -v'
                     sh 'npm -v'
 
-                    dir('front-end-angular8') {
+                    dir('Front-End') {
                         echo "🔹 Limpiando dependencias y dist"
                         sh 'rm -rf node_modules package-lock.json dist || true'
 
@@ -36,14 +36,15 @@ pipeline {
         stage('Build New Feature (Node 18)') {
             steps {
                 script {
-                    // Selecciona Node 18
+                    // Cambia a Node 18
                     env.PATH = "${tool 'node18'}/bin:${env.PATH}"
 
                     echo "🔹 Usando Node 18 para nueva feature"
                     sh 'node -v'
                     sh 'npm -v'
 
-                    dir('front-end-new') {
+                    // Cambia esta carpeta según donde esté tu nuevo proyecto
+                    dir('Front-End-New') {
                         echo "🔹 Limpiando dependencias y dist"
                         sh 'rm -rf node_modules package-lock.json dist || true'
 
