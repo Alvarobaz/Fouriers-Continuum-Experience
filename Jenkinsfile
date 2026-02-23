@@ -1,65 +1,91 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'node18' // usa la versión 18 que tienes instalada
+    environment {
+        FRONTEND_DIR = 'frontend' // Ajusta al path de tu proyecto Angular
+        NODE_ENV = 'production'
     }
 
-    environment {
-        BACKEND_DIR = 'Back-End'
-        FRONTEND_DIR = 'Front-End'
+    options {
+        // Limita logs y asegura limpieza de workspace entre builds
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
     }
 
     stages {
 
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
-                echo 'Obteniendo código desde Git...'
+                echo 'Clonando repositorio...'
                 checkout scm
             }
         }
 
-        stage('Build Backend') {
+        stage('Clean Workspace') {
             steps {
-                echo 'Compilando Backend...'
-                dir("${BACKEND_DIR}") {
-                    sh 'chmod +x mvnw'
-                    sh './mvnw clean compile'
+                echo 'Limpiando workspace y node_modules...'
+                dir("${FRONTEND_DIR}") {
+                    sh '''
+                        echo "Eliminando node_modules y package-lock.json con permisos correctos..."
+                        if [ -d node_modules ]; then
+                            chmod -R u+w node_modules
+                            rm -rf node_modules
+                        fi
+                        rm -f package-lock.json
+                    '''
                 }
             }
         }
 
-        stage('Build Frontend') {
+        stage('Install Dependencies') {
             steps {
-                echo 'Compilando Frontend Angular...'
+                echo 'Instalando dependencias npm...'
                 dir("${FRONTEND_DIR}") {
-
-                    // Limpia dependencias corruptas / problemas de permisos
-                    sh 'rm -rf node_modules package-lock.json || true || chmod -R u+w node_modules && rm -rf node_modules package-lock.json'
-
-                    // Instala dependencias ignorando conflictos de peerDependencies
                     sh 'npm install --legacy-peer-deps'
+                }
+            }
+        }
 
-                    // Build Angular en modo producción
+        stage('Build Angular') {
+            steps {
+                echo 'Compilando Angular para producción...'
+                dir("${FRONTEND_DIR}") {
                     sh 'npm run build -- --configuration production'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                echo 'Ejecutando tests...'
+                dir("${FRONTEND_DIR}") {
+                    sh 'npm run test -- --watch=false --browsers=ChromeHeadless'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                echo 'Análisis SonarQube (pendiente configuración)'
-                // Aquí puedes agregar tu comando sonar-scanner si ya lo configuras
+                echo 'Ejecutando análisis SonarQube...'
+                withSonarQubeEnv('SonarQubeServer') { // Ajusta el nombre de tu servidor Sonar
+                    dir("${FRONTEND_DIR}") {
+                        sh 'sonar-scanner'
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline completado correctamente ✅'
+            echo 'Pipeline completado ✅'
         }
         failure {
             echo 'Pipeline falló ❌'
+        }
+        always {
+            echo 'Limpiando workspace después del build...'
+            cleanWs()
         }
     }
 }
