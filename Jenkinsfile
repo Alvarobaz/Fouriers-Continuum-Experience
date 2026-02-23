@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'node20'
+        nodejs 'node18' // usa la versión 18 que tienes instalada
     }
 
     environment {
@@ -34,14 +34,14 @@ pipeline {
                 echo 'Compilando Frontend Angular...'
                 dir("${FRONTEND_DIR}") {
 
-                    // limpia dependencias corruptas
-                    sh 'rm -rf node_modules package-lock.json || true'
+                    // Limpia dependencias corruptas / problemas de permisos
+                    sh 'rm -rf node_modules package-lock.json || true || chmod -R u+w node_modules && rm -rf node_modules package-lock.json'
 
-                    // instala dependencias
-                    sh 'npm install'
+                    // Instala dependencias ignorando conflictos de peerDependencies
+                    sh 'npm install --legacy-peer-deps'
 
-                    // build angular
-                    sh 'npm run build'
+                    // Build Angular en modo producción
+                    sh 'npm run build -- --configuration production'
                 }
             }
         }
@@ -49,6 +49,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 echo 'Análisis SonarQube (pendiente configuración)'
+                // Aquí puedes agregar tu comando sonar-scanner si ya lo configuras
             }
         }
     }
