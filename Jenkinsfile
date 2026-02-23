@@ -16,14 +16,10 @@ pipeline {
             tools { nodejs 'node10' }
             steps {
                 dir('Front-End') {
-                    echo "Ajustando permisos..."
-                    sh 'chmod -R 777 . || true'  // desbloquea permisos
-                    echo "Limpiando node_modules y package-lock.json..."
-                    sh 'rm -rf node_modules package-lock.json || true'
-
+                    echo "Eliminando completamente el directorio para evitar problemas de permisos..."
+                    sh 'rm -rf ./* || true'  // borra todo el contenido del Front-End
                     echo "Instalando dependencias con Node 10..."
-                    sh 'npm ci --legacy-peer-deps'
-
+                    sh 'npm install --legacy-peer-deps'
                     echo "Construyendo la aplicación..."
                     sh 'npx ng build'
                 }
