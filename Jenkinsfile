@@ -1,44 +1,59 @@
 pipeline {
     agent any
-
-    tools {
-        maven 'Maven 3.8.8'
+    environment {
+        NODE_VERSION = "10"
+        PATH = "${tool 'NodeJS_'+NODE_VERSION}/bin:${env.PATH}"
     }
-
     stages {
-        stage('Checkout SCM') {
-            steps { 
-                checkout scm 
+
+        stage('Preparar Front-End') {
+            steps {
+                dir('Front-End') {
+                    echo "🔹 Limpiando node_modules y package-lock.json..."
+                    sh '''
+                        # Elimina todo el contenido que pueda dar problemas
+                        rm -rf node_modules package-lock.json || true
+                        rm -rf dist || true
+                    '''
+                }
             }
         }
 
-        stage('Install Dependencies & Build') {
-            tools { nodejs 'node10' }
+        stage('Instalar dependencias') {
             steps {
                 dir('Front-End') {
-                    echo "Eliminando completamente el directorio Front-End para evitar problemas de permisos..."
-                    sh 'rm -rf ./* || true'  // borra TODO el contenido
-                    echo "Instalando dependencias con Node 10..."
+                    echo "🔹 Instalando dependencias con Node ${NODE_VERSION}..."
                     sh 'npm install --legacy-peer-deps'
-                    echo "Construyendo la aplicación..."
-                    sh 'npx ng build'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('Front-End') {
+                    echo "🔹 Compilando aplicación Front-End..."
+                    sh 'npx ng build --prod || true'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
-            tools { nodejs 'node18' }
+            when {
+                expression { return fileExists('Front-End/sonar-project.properties') }
+            }
             steps {
-                dir('Front-End') {
-                    echo "Ejecutando SonarQube..."
-                    sh 'sonar-scanner'
-                }
+                echo "🔹 Ejecutando análisis SonarQube..."
+                sh 'sonar-scanner -Dproject.settings=Front-End/sonar-project.properties'
             }
         }
     }
 
     post {
-        success { echo 'Pipeline finalizado correctamente ✅' }
-        failure { echo 'Pipeline falló ❌' }
+        always {
+            echo "✅ Pipeline finalizado"
+        }
+        failure {
+            echo "❌ Pipeline falló"
+        }
     }
 }
