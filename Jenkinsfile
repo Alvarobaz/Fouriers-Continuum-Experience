@@ -7,19 +7,25 @@ pipeline {
 
     stages {
         stage('Checkout SCM') {
-            steps { checkout scm }
+            steps { 
+                checkout scm 
+            }
         }
 
         stage('Install Dependencies & Build') {
             tools { nodejs 'node10' }
             steps {
                 dir('Front-End') {
+                    echo "Ajustando permisos..."
+                    sh 'chmod -R 777 . || true'  // desbloquea permisos
                     echo "Limpiando node_modules y package-lock.json..."
                     sh 'rm -rf node_modules package-lock.json || true'
+
                     echo "Instalando dependencias con Node 10..."
                     sh 'npm ci --legacy-peer-deps'
+
                     echo "Construyendo la aplicación..."
-                    sh 'npm run build'
+                    sh 'npx ng build'
                 }
             }
         }
