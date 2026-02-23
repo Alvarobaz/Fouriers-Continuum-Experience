@@ -6,15 +6,13 @@ pipeline {
     }
 
     tools {
-        maven 'Default Maven'
-        jdk 'Default JDK'
+        maven 'Maven 3.8.8'  // tu instalación de Maven
     }
 
     stages {
 
         stage('Checkout SCM') {
             steps {
-                echo "Haciendo checkout del repositorio..."
                 checkout scm
             }
         }
@@ -26,10 +24,8 @@ pipeline {
             steps {
                 dir('Front-End') {
                     echo "Instalando dependencias con Node 10..."
-                    // npm ci limpia e instala; si hay conflictos de peer deps usa --legacy-peer-deps
-                    sh 'npm ci --legacy-peer-deps'  
-
-                    echo "Construyendo la aplicación con Angular 8..."
+                    sh 'npm ci --legacy-peer-deps'
+                    echo "Construyendo la aplicación con Node 10..."
                     sh 'npm run build'
                 }
             }
@@ -38,9 +34,6 @@ pipeline {
         stage('SonarQube Analysis') {
             tools {
                 nodejs 'node18'  // Node 18 para SonarQube
-            }
-            when {
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
                 dir('Front-End') {
