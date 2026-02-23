@@ -15,17 +15,18 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
-                // Limpiamos node_modules y package-lock.json si existen
-                sh '''
-                [ -d node_modules ] && rm -rf node_modules
-                [ -f package-lock.json ] && rm -f package-lock.json
-                '''
+                dir('Front-End') { // Entramos en la carpeta correcta
+                    sh '''
+                    [ -d node_modules ] && rm -rf node_modules
+                    [ -f package-lock.json ] && rm -f package-lock.json
+                    '''
+                }
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                dir('.') { // Apunta a la raíz del repo
+                dir('Front-End') { // Ahora npm busca package.json en Front-End
                     echo "Instalando dependencias..."
                     sh 'npm install'
                 }
@@ -34,7 +35,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir('.') {
+                dir('Front-End') {
                     echo "Construyendo la aplicación..."
                     sh 'npm run build'
                 }
@@ -46,9 +47,8 @@ pipeline {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
-                dir('.') {
+                dir('Front-End') {
                     echo "Ejecutando análisis de SonarQube..."
-                    // Ajusta esto según tu configuración de Sonar
                     sh 'sonar-scanner'
                 }
             }
