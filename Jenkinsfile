@@ -3,65 +3,47 @@ pipeline {
 
     stages {
 
-        stage('Checkout SCM') {
-            steps {
-                checkout scm
+        stage('Install Dependencies (Node 10)') {
+            tools {
+                nodejs 'Node10'
             }
-        }
-
-        stage('Build Angular 8 (Node 10)') {
             steps {
-                script {
-                    // Selecciona Node 10
-                    env.PATH = "${tool 'node10'}/bin:${env.PATH}"
-
-                    echo "🔹 Usando Node 10 para Angular 8"
+                dir('Front-End') {
                     sh 'node -v'
                     sh 'npm -v'
-
-                    dir('Front-End') {
-                        echo "🔹 Limpiando dependencias y dist"
-                        sh 'rm -rf node_modules package-lock.json dist || true'
-
-                        echo "🔹 Instalando dependencias"
-                        sh 'npm install --legacy-peer-deps'
-
-                        echo "🔹 Compilando Angular 8"
-                        sh 'npx ng build --prod'
-                    }
+                    sh 'npm install'
                 }
             }
         }
 
-        stage('Build New Feature (Node 18)') {
+        stage('Build Legacy (Node 10)') {
+            tools {
+                nodejs 'Node10'
+            }
             steps {
-                script {
-                    // Cambia a Node 18
-                    env.PATH = "${tool 'node18'}/bin:${env.PATH}"
+                dir('Front-End') {
+                    sh 'npm run build'
+                }
+            }
+        }
 
-                    echo "🔹 Usando Node 18 para nueva feature"
+        stage('Build Modern Feature (Node 18)') {
+            tools {
+                nodejs 'Node18'
+            }
+            steps {
+                dir('Front-End') {
                     sh 'node -v'
                     sh 'npm -v'
-
-                    // Cambia esta carpeta según donde esté tu nuevo proyecto
-                    dir('Front-End-New') {
-                        echo "🔹 Limpiando dependencias y dist"
-                        sh 'rm -rf node_modules package-lock.json dist || true'
-
-                        echo "🔹 Instalando dependencias"
-                        sh 'npm install'
-
-                        echo "🔹 Compilando nueva feature"
-                        sh 'npx ng build --prod'
-                    }
+                    sh 'npm run build:new-feature'
                 }
             }
         }
     }
 
     post {
-        always {
-            echo '✅ Pipeline finalizado'
+        success {
+            echo '✅ Pipeline finalizado correctamente'
         }
         failure {
             echo '❌ Pipeline falló'
