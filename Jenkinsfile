@@ -34,7 +34,7 @@ pipeline {
                     echo "Usando Node 10 para build legacy"
                     dir('Front-End') {
                         sh 'node -v'
-                        sh 'npm ci --legacy-peer-deps'
+                       
                     }
                 }
             }
