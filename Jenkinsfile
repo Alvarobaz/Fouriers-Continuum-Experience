@@ -5,12 +5,11 @@ pipeline {
 
         stage('Install Dependencies (Node 10)') {
             tools {
-                nodejs 'Node10'
+                nodejs 'node10'
             }
             steps {
                 dir('Front-End') {
                     sh 'node -v'
-                    sh 'npm -v'
                     sh 'npm install'
                 }
             }
@@ -18,7 +17,7 @@ pipeline {
 
         stage('Build Legacy (Node 10)') {
             tools {
-                nodejs 'Node10'
+                nodejs 'node10'
             }
             steps {
                 dir('Front-End') {
@@ -29,24 +28,14 @@ pipeline {
 
         stage('Build Modern Feature (Node 18)') {
             tools {
-                nodejs 'Node18'
+                nodejs 'node18'
             }
             steps {
                 dir('Front-End') {
                     sh 'node -v'
-                    sh 'npm -v'
                     sh 'npm run build:new-feature'
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo '✅ Pipeline finalizado correctamente'
-        }
-        failure {
-            echo '❌ Pipeline falló'
         }
     }
 }
