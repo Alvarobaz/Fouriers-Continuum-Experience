@@ -28,7 +28,7 @@ pipeline {
                     echo "Usando Node 10 para build legacy"
                     dir('Front-End') {
                         sh 'node -v'
-                        sh 'npm install --ignore-scripts'            // Solo install
+                        sh 'npm install'            // Solo install
                         sh 'npm run build:legacy'   // Build legacy
                     }
                 }
