@@ -34,9 +34,6 @@ pipeline {
         }
 
         stage('Build Modern (Node 18)') {
-            tools {
-                nodejs 'node18'
-            }
             steps {
                 script {
                     echo "Usando Node 18 para build moderno"
@@ -50,9 +47,6 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            tools {
-                nodejs 'node18'
-            }
             steps {
                 script {
                     def scannerHome = tool 'SonarScanner'
