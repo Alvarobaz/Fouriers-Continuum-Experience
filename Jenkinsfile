@@ -2,40 +2,33 @@ pipeline {
     agent any
 
     stages {
-
-        stage('Install Dependencies Legacy (Node 10)') {
-            tools {
-                nodejs 'node10' // Asegúrate que el nombre coincide con tu configuración de Jenkins
-            }
+        stage('Build Legacy (Node 10)') {
+            tools { nodejs 'node10' }
             steps {
-                dir('Front-End-Legacy') { // Carpeta separada para legacy
-                    sh 'node -v'
-                    sh 'npm install'
-                    sh 'npm run build:legacy' // tu script legacy
-                }
+                sh '''
+                    echo "Usando Node $(node -v)"
+                    mkdir -p node10_modules
+                    npm install --prefix ./ node_modules=node10_modules
+                    npm run build:legacy
+                '''
             }
         }
 
-        stage('Install Dependencies Modern (Node 18)') {
-            tools {
-                nodejs 'node18' // Asegúrate que el nombre coincide con tu configuración de Jenkins
-            }
+        stage('Build Modern (Node 18)') {
+            tools { nodejs 'node18' }
             steps {
-                dir('Front-End') { // Carpeta moderna
-                    sh 'node -v'
-                    sh 'npm install'
-                    sh 'npm run build' // tu script moderno
-                }
+                sh '''
+                    echo "Usando Node $(node -v)"
+                    mkdir -p node18_modules
+                    npm install --prefix ./ node_modules=node18_modules
+                    npm run build
+                '''
             }
         }
     }
 
     post {
-        success {
-            echo '✅ Todo OK'
-        }
-        failure {
-            echo '❌ Algo falló'
-        }
+        success { echo "✅ Todo OK" }
+        failure { echo "❌ Algo falló" }
     }
 }
