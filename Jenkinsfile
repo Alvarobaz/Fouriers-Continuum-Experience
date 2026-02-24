@@ -4,20 +4,13 @@ pipeline {
     tools {
         maven 'Maven 3.8.8'
         nodejs 'node22'
-        
     }
 
-    
     stages {
 
         stage('Clean Workspace') {
-        steps {
-            deleteDir()
-            }
-        }
-        stage('Declarative: Tool Install') {
             steps {
-                echo "Usando herramientas configuradas: Maven 3.8.8 y Node10"
+                deleteDir()
             }
         }
 
@@ -27,27 +20,12 @@ pipeline {
             }
         }
 
-        stage('Build Legacy (Node 10)') {
-            
+        stage('Build Frontend (Node 22)') {
             steps {
-                script {
-                    echo "Usando Node 10 para build legacy"
-                    dir('Front-End') {
-                        sh 'node -v'
-                       
-                    }
-                }
-            }
-        }
-
-        stage('Build Modern (Node 18)') {
-            steps {
-                script {
-                    echo "Usando Node 18 para build moderno"
-                    dir('Front-End') {
-                        sh 'node -v'          // Solo install
-                             // Build moderno
-                    }
+                dir('Front-End') {
+                    sh 'node -v'
+                    sh 'npm install --legacy-peer-deps'
+                    sh 'npm run build'
                 }
             }
         }
