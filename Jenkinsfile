@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     tools {
-        maven 'Default Maven'
-        jdk 'Default JDK'
-        nodejs 'node10'  // por defecto usamos Node 10
+        maven 'Maven 3.8.8'
+        nodejs 'node10'        // Node 10 para legacy
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout SCM') {
             steps {
                 checkout scm
             }
@@ -16,29 +16,38 @@ pipeline {
 
         stage('Build Legacy (Node 10)') {
             steps {
-                dir('Front-End-Legacy') {
-                    sh '''
-                        echo "Usando Node $(node -v)"
-                        npm ci
-                        npm run build:legacy
-                    '''
+                script {
+                    echo "Usando Node 10 para build legacy"
+                    dir('Front-End-Legacy') {
+                        sh 'node -v'
+                        sh 'npm ci'
+                        sh 'npm run build:legacy'
+                    }
                 }
             }
         }
 
-        stage('Build Modern / SonarQube (Node 18)') {
+        stage('Build Modern (Node 18)') {
             tools {
-                nodejs 'node18'
+                nodejs 'node18'      // Node 18 para modern
             }
             steps {
-                dir('Front-End-Modern') {
-                    sh '''
-                        echo "Usando Node $(node -v)"
-                        npm ci
-                        npm run build
-                    '''
+                script {
+                    echo "Usando Node 18 para build moderno"
+                    dir('Front-End-Modern') {
+                        sh 'node -v'
+                        sh 'npm ci'
+                        sh 'npm run build'
+                    }
                 }
+            }
+        }
 
+        stage('SonarQube Analysis') {
+            tools {
+                nodejs 'node18'      // Node 18 para Sonar
+            }
+            steps {
                 script {
                     def scannerHome = tool 'SonarScanner'
                     withSonarQubeEnv('sonarqube') {
@@ -50,7 +59,11 @@ pipeline {
     }
 
     post {
-        success { echo "✅ Pipeline completado correctamente" }
-        failure { echo "❌ Hubo errores en el pipeline" }
+        success {
+            echo "✅ Pipeline finalizado correctamente"
+        }
+        failure {
+            echo "❌ Algo falló en la pipeline"
+        }
     }
 }
