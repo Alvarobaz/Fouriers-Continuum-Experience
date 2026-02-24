@@ -3,7 +3,8 @@ pipeline {
 
     tools {
         maven 'Maven 3.8.8'
-        nodejs 'node10'
+        nodejs 'node16'
+        
     }
 
     stages {
@@ -20,16 +21,13 @@ pipeline {
         }
 
         stage('Build Legacy (Node 10)') {
-            tools {
-                nodejs 'node10'
-            }
+            
             steps {
                 script {
                     echo "Usando Node 10 para build legacy"
                     dir('Front-End') {
                         sh 'node -v'
-                        sh 'npm install'            // Solo install
-                        sh 'npm run build:legacy'   // Build legacy
+                        sh 'npm ci --legacy-peer-deps'
                     }
                 }
             }
