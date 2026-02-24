@@ -39,8 +39,7 @@ pipeline {
                 script {
                     echo "Usando Node 18 para build moderno"
                     dir('Front-End') {
-                        sh 'node -v'
-                        sh 'npm install'           // Solo install
+                        sh 'node -v'          // Solo install
                         sh 'npm run build'         // Build moderno
                     }
                 }
