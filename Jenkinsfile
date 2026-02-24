@@ -18,7 +18,7 @@ pipeline {
             steps {
                 script {
                     echo "Usando Node 10 para build legacy"
-                    dir('Front-End-Legacy') {
+                    dir('Front-End') {
                         sh 'node -v'
                         sh 'npm ci'
                         sh 'npm run build:legacy'
@@ -34,7 +34,7 @@ pipeline {
             steps {
                 script {
                     echo "Usando Node 18 para build moderno"
-                    dir('Front-End-Modern') {
+                    dir('Front-End') {
                         sh 'node -v'
                         sh 'npm ci'
                         sh 'npm run build'
