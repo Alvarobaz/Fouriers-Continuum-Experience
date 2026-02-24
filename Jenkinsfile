@@ -9,6 +9,12 @@ pipeline {
 
     
     stages {
+
+        stage('Clean Workspace') {
+        steps {
+            deleteDir()
+            }
+        }
         stage('Declarative: Tool Install') {
             steps {
                 echo "Usando herramientas configuradas: Maven 3.8.8 y Node10"
