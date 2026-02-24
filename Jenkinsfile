@@ -3,10 +3,15 @@ pipeline {
 
     tools {
         maven 'Maven 3.8.8'
-        nodejs 'node10'        // Node 10 para legacy
+        nodejs 'node10'
     }
 
     stages {
+        stage('Declarative: Tool Install') {
+            steps {
+                echo "Usando herramientas configuradas: Maven 3.8.8 y Node10"
+            }
+        }
 
         stage('Checkout SCM') {
             steps {
@@ -15,13 +20,16 @@ pipeline {
         }
 
         stage('Build Legacy (Node 10)') {
+            tools {
+                nodejs 'node10'
+            }
             steps {
                 script {
                     echo "Usando Node 10 para build legacy"
                     dir('Front-End') {
                         sh 'node -v'
-                        sh 'npm ci'
-                        sh 'npm run build:legacy'
+                        sh 'npm install'            // Solo install
+                        sh 'npm run build:legacy'   // Build legacy
                     }
                 }
             }
@@ -29,15 +37,15 @@ pipeline {
 
         stage('Build Modern (Node 18)') {
             tools {
-                nodejs 'node18'      // Node 18 para modern
+                nodejs 'node18'
             }
             steps {
                 script {
                     echo "Usando Node 18 para build moderno"
                     dir('Front-End') {
                         sh 'node -v'
-                        sh 'npm ci'
-                        sh 'npm run build'
+                        sh 'npm install'           // Solo install
+                        sh 'npm run build'         // Build moderno
                     }
                 }
             }
@@ -45,7 +53,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             tools {
-                nodejs 'node18'      // Node 18 para Sonar
+                nodejs 'node18'
             }
             steps {
                 script {
@@ -60,7 +68,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline finalizado correctamente"
+            echo "✅ Pipeline completada correctamente"
         }
         failure {
             echo "❌ Algo falló en la pipeline"
