@@ -46,7 +46,7 @@ pipeline {
                     echo "Usando Node 18 para build moderno"
                     dir('Front-End') {
                         sh 'node -v'          // Solo install
-                        sh 'ng build --configuration production'         // Build moderno
+                        sh 'npm run build --configuration production'         // Build moderno
                     }
                 }
             }
