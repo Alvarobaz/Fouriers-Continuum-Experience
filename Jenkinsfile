@@ -1,14 +1,24 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Default Maven'
+        jdk 'Default JDK'
+        nodejs 'node10'  // por defecto usamos Node 10
+    }
+
     stages {
-        stage('Build Legacy (Node 10)') {
-            tools { nodejs 'node10' }
+        stage('Checkout') {
             steps {
-                dir('Front-End') {
+                checkout scm
+            }
+        }
+
+        stage('Build Legacy (Node 10)') {
+            steps {
+                dir('Front-End-Legacy') {
                     sh '''
                         echo "Usando Node $(node -v)"
-                        # Instalación de dependencias solo para Node 10
                         npm ci
                         npm run build:legacy
                     '''
@@ -16,27 +26,31 @@ pipeline {
             }
         }
 
-        stage('Build Modern (Node 18)') {
-            tools { nodejs 'node18' }
+        stage('Build Modern / SonarQube (Node 18)') {
+            tools {
+                nodejs 'node18'
+            }
             steps {
-                dir('Front-End') {
+                dir('Front-End-Modern') {
                     sh '''
                         echo "Usando Node $(node -v)"
-                        # Limpia node_modules temporalmente si quieres aislar
-                        mv node_modules node_modules_node10 || true
                         npm ci
                         npm run build
-                        # Opcional: restaurar node_modules legacy
-                        rm -rf node_modules
-                        mv node_modules_node10 node_modules || true
                     '''
+                }
+
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('sonarqube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
                 }
             }
         }
     }
 
     post {
-        success { echo "✅ Todo OK" }
-        failure { echo "❌ Algo falló" }
+        success { echo "✅ Pipeline completado correctamente" }
+        failure { echo "❌ Hubo errores en el pipeline" }
     }
 }
