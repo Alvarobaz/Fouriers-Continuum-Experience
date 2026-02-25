@@ -3,6 +3,7 @@ pipeline {
 
     tools {
         maven 'Maven 3.8.8'
+        sonarScanner 'SonarScanner' // <-- nombre de la herramienta instalada en Jenkins
     }
 
     stages {
@@ -23,18 +24,8 @@ pipeline {
             steps {
                 script {
                     def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('sonarqube') {
-                        // Ejecuta SonarScanner y devuelve código de salida
-                        def status = sh(
-                            script: "${scannerHome}/bin/sonar-scanner",
-                            returnStatus: true
-                        )
-                        echo "Sonar exit code: ${status}"
-
-                        // Opcional: si quieres marcar build como FAILURE según código
-                        // if (status != 0) {
-                        //     error("SonarQube Quality Gate failed")
-                        // }
+                    withSonarQubeEnv('sonarqube') {  // <-- nombre exacto de tu servidor SonarQube
+                        sh "${scannerHome}/bin/sonar-scanner"
                     }
                 }
             }
@@ -49,7 +40,7 @@ pipeline {
 
     post {
         always {
-            echo "✅ Pipeline ejecutado (estado real según stages)"
+            echo "✅ Pipeline ejecutado correctamente"
         }
     }
 }
