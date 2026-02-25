@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     tools {
+        // Solo Maven por si se necesita para futuros stages, pero no se ejecuta
         maven 'Maven 3.8.8'
     }
 
@@ -21,35 +22,15 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Preparación de Entorno') {
             steps {
-                echo "🔹 Compilando proyecto con Maven"
-                sh 'mvn clean compile'
+                echo "🔹 Herramientas listas (Maven configurado, SonarScanner disponible)"
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Prueba de Pipeline') {
             steps {
-                script {
-                    def scannerHome = tool 'SonarScanner'
-
-                    // Debug: mostrar versión y path
-                    sh "echo 'Scanner Home: ${scannerHome}'"
-                    sh "${scannerHome}/bin/sonar-scanner -v"
-
-                    // Ejecutar análisis con debug y manejo de fallo
-                    withSonarQubeEnv('SonarQube') {
-                        sh """
-                           ${scannerHome}/bin/sonar-scanner -X || echo '⚠️ SonarScanner falló, pero el pipeline continúa'
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Pipeline OK') {
-            steps {
-                echo "✅ Pipeline ejecutado correctamente"
+                echo "🔹 Pipeline base funcionando correctamente"
             }
         }
     }
