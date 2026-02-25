@@ -3,7 +3,6 @@ pipeline {
 
     tools {
         maven 'Maven 3.8.8'
-        nodejs 'node22'
     }
 
     stages {
@@ -20,16 +19,6 @@ pipeline {
             }
         }
 
-        stage('Build Frontend (Node 22)') {
-            steps {
-                dir('Front-End') {
-                    sh 'node -v'
-                    sh 'npm install --legacy-peer-deps'
-                    sh 'npm run build'
-                }
-            }
-        }
-
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -40,6 +29,19 @@ pipeline {
                 }
             }
         }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t mi-imagen:latest .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                sh 'docker push mi-imagen:latest'
+            }
+        }
+
     }
 
     post {
