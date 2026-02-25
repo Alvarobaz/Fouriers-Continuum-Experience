@@ -24,7 +24,7 @@ pipeline {
                 script {
                     def scannerHome = tool 'SonarScanner'
                     withSonarQubeEnv('sonarqube') {
-                        sh "${scannerHome}/bin/sonar-scanner || true"
+                        sh "${scannerHome}/bin/sonar-scanner"
                     }
                 }
             }
@@ -32,22 +32,13 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t mi-imagen:latest . || true'
+                sh 'docker build -t mi-imagen:latest .'
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                sh 'docker push mi-imagen:latest || true'
-            }
-        }
-    }
-
-    post {
-        always {
-            script {
-                currentBuild.result = 'SUCCESS'
-                echo "✅ Pipeline completada correctamente"
+                sh 'docker push mi-imagen:latest'
             }
         }
     }
