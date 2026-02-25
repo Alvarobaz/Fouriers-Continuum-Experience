@@ -24,7 +24,11 @@ pipeline {
                 script {
                     def scannerHome = tool 'SonarScanner'
                     withSonarQubeEnv('sonarqube') {
-                        sh "${scannerHome}/bin/sonar-scanner"
+                        def status = sh(
+                            script: "${scannerHome}/bin/sonar-scanner",
+                            returnStatus: true
+                        )
+                        echo "Sonar exit code: ${status}"
                     }
                 }
             }
