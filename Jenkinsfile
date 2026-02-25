@@ -19,20 +19,26 @@ pipeline {
             }
         }
 
+        stage('Build') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    def scannerHome = tool 'SonarScanner'  // nombre EXACTO de la tool
-                    withSonarQubeEnv('sonarqube') {        // nombre EXACTO del server
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
                         sh "${scannerHome}/bin/sonar-scanner"
                     }
                 }
             }
         }
 
-        stage('Prueba de Pipeline') {
+        stage('Pipeline OK') {
             steps {
-                echo "Pipeline funcionando correctamente"
+                echo "Pipeline ejecutado correctamente"
             }
         }
     }
