@@ -3,30 +3,40 @@ pipeline {
 
     tools {
         maven 'Maven 3.8.8'
-        // Node.js si lo necesitaras más adelante: nodejs 'node22'
     }
 
     stages {
 
         stage('Clean Workspace') {
             steps {
-                echo "🔹 Limpiando workspace"
                 deleteDir()
             }
         }
 
         stage('Checkout SCM') {
             steps {
-                echo "🔹 Haciendo checkout del repositorio GitHub"
                 checkout scm
             }
         }
 
-        stage('Preparación de Entorno') {
+        stage('SonarQube Analysis') {
             steps {
-                echo "🔹 Herramientas configuradas: Maven y SonarScanner"
-                sh 'mvn -v'
-                sh 'sonar-scanner -v || echo "⚠️ SonarScanner no instalado o no configurado aún"'
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('sonarqube') {
+                        // Ejecuta SonarScanner y devuelve código de salida
+                        def status = sh(
+                            script: "${scannerHome}/bin/sonar-scanner",
+                            returnStatus: true
+                        )
+                        echo "Sonar exit code: ${status}"
+
+                        // Opcional: si quieres marcar build como FAILURE según código
+                        // if (status != 0) {
+                        //     error("SonarQube Quality Gate failed")
+                        // }
+                    }
+                }
             }
         }
 
@@ -35,8 +45,6 @@ pipeline {
                 echo "🔹 Pipeline base funcionando correctamente"
             }
         }
-
-        // Aquí se pueden añadir luego las etapas de Docker, Nexus, despliegue, etc.
     }
 
     post {
