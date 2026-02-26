@@ -2,42 +2,60 @@ pipeline {
     agent any
 
     tools {
-        // Solo Maven por si se necesita para futuros stages, pero no se ejecuta
         maven 'Maven 3.8.8'
+        nodejs 'node16'
     }
 
     stages {
 
         stage('Clean Workspace') {
             steps {
-                echo "🔹 Limpiando workspace"
                 deleteDir()
             }
         }
 
         stage('Checkout SCM') {
             steps {
-                echo "🔹 Haciendo checkout del repositorio GitHub"
                 checkout scm
             }
         }
 
-        stage('Preparación de Entorno') {
+        stage('Build Frontend (Node 16)') {
             steps {
-                echo "🔹 Herramientas listas (Maven configurado, SonarScanner disponible)"
+                dir('Front-End') {
+                    sh 'node -v'
+                    sh 'npm ci --legacy-peer-deps'
+                    sh 'npm run build'
+                }
             }
         }
 
-        stage('Prueba de Pipeline') {
+        stage('Build Backend (Maven)') {
             steps {
-                echo "🔹 Pipeline base funcionando correctamente"
+                dir('Back-End') {   // ⚠️ Cambia el nombre si tu carpeta es diferente
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
             }
         }
     }
 
     post {
-        always {
-            echo "🔹 Pipeline finalizado"
+        success {
+            echo "✅ Pipeline completada correctamente"
+        }
+        failure {
+            echo "❌ Algo falló en la pipeline"
         }
     }
 }
