@@ -32,7 +32,7 @@ pipeline {
 
         stage('Build Backend (Maven)') {
             steps {
-                dir('Back-End') {   // ⚠️ Cambia el nombre si tu carpeta es diferente
+                dir('Back-End') {
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -44,6 +44,49 @@ pipeline {
                     def scannerHome = tool 'SonarScanner'
                     withSonarQubeEnv('SonarQube') {
                         sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
+
+        // ===============================
+        // ✅ NUEVO STAGE — PUBLISH NEXUS
+        // ===============================
+        stage('Publish to Nexus') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+
+                    def version = "1.0.${env.BUILD_NUMBER}"
+
+                    withCredentials([usernamePassword(
+                        credentialsId: 'nexus-cred',
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASS'
+                    )]) {
+
+                        echo "📦 Publicando artefactos versión ${version}"
+
+                        // BACKEND JAR
+                        sh """
+                        curl -u $NEXUS_USER:$NEXUS_PASS \
+                        --upload-file Back-End/target/*.jar \
+                        http://host.docker.internal:8081/repository/maven-releases/backend-${version}.jar
+                        """
+
+                        // FRONTEND ZIP
+                        sh """
+                        cd Front-End
+                        zip -r frontend-${version}.zip dist
+                        """
+
+                        sh """
+                        curl -u $NEXUS_USER:$NEXUS_PASS \
+                        --upload-file Front-End/frontend-${version}.zip \
+                        http://host.docker.internal:8081/repository/maven-releases/frontend-${version}.zip
+                        """
                     }
                 }
             }
