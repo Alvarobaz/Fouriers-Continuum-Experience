@@ -71,21 +71,18 @@ pipeline {
 
                         // BACKEND JAR
                         sh """
-                        curl -u $NEXUS_USER:$NEXUS_PASS \
+                        curl -v -u $NEXUS_USER:$NEXUS_PASS \
                         --upload-file Back-End/target/*.jar \
-                        http://host.docker.internal:8081/repository/maven-releases/backend-${version}.jar
+                        http://nexus:8081/repository/maven-releases/backend-${version}.jar
                         """
 
                         // FRONTEND ZIP
                         sh """
                         cd Front-End
                         zip -r frontend-${version}.zip dist
-                        """
-
-                        sh """
-                        curl -u $NEXUS_USER:$NEXUS_PASS \
-                        --upload-file Front-End/frontend-${version}.zip \
-                        http://host.docker.internal:8081/repository/maven-releases/frontend-${version}.zip
+                        curl -v -u $NEXUS_USER:$NEXUS_PASS \
+                        --upload-file frontend-${version}.zip \
+                        http://nexus:8081/repository/maven-releases/frontend-${version}.zip
                         """
                     }
                 }
