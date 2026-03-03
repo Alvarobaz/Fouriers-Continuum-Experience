@@ -45,35 +45,66 @@ pipeline {
             }
         }
 
-        stage('Publish to Nexus') {
+        stage('Publish Backend to Nexus') {
             steps {
-                script {
-                    def version = "1.0.${env.BUILD_NUMBER}"
+                dir('Back-End') {
+                    script {
+                        withCredentials([usernamePassword(
+                            credentialsId: 'nexus-cred',
+                            usernameVariable: 'NEXUS_USER',
+                            passwordVariable: 'NEXUS_PASS'
+                        )]) {
 
-                    withCredentials([usernamePassword(
-                        credentialsId: 'nexus-cred',
-                        usernameVariable: 'NEXUS_USER',
-                        passwordVariable: 'NEXUS_PASS'
-                    )]) {
+                            def groupId = "com.mycompany.issuetracking"
+                            def artifactId = "issuetracking"
+                            def version = "0.0.1-${env.BUILD_NUMBER}"
+                            def jarFile = "target/issuetracking-0.0.1-SNAPSHOT.jar"
 
-                        sh """
-                        set -e
-                        echo "Subiendo BACKEND..."
-                        curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
-                        --upload-file Back-End/target/*.jar \
-                        http://nexus:8081/repository/maven-releases/backend-${version}.jar
-
-                        echo "Subiendo FRONTEND..."
-                        curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
-                        --upload-file Front-End/frontend.zip \
-                        http://nexus:8081/repository/maven-releases/frontend-${version}.zip
-
-                        echo "✔ Artefactos subidos correctamente"
-                        """
+                            sh """
+                                echo "Subiendo BACKEND a Nexus con Maven..."
+                                mvn deploy:deploy-file \
+                                    -DrepositoryId=nexus \
+                                    -Durl=http://nexus:8081/repository/maven-releases/ \
+                                    -Dfile=${jarFile} \
+                                    -DgroupId=${groupId} \
+                                    -DartifactId=${artifactId} \
+                                    -Dversion=${version} \
+                                    -Dpackaging=jar \
+                                    -DgeneratePom=true \
+                                    -DrepositoryLayout=default \
+                                    -Dusername=$NEXUS_USER \
+                                    -Dpassword=$NEXUS_PASS
+                            """
+                        }
                     }
                 }
             }
         }
+
+        stage('Publish Frontend ZIP to Nexus') {
+            steps {
+                dir('Front-End') {
+                    script {
+                        withCredentials([usernamePassword(
+                            credentialsId: 'nexus-cred',
+                            usernameVariable: 'NEXUS_USER',
+                            passwordVariable: 'NEXUS_PASS'
+                        )]) {
+
+                            def version = "0.0.1-${env.BUILD_NUMBER}"
+
+                            sh """
+                                echo "Subiendo FRONTEND ZIP a repo raw..."
+                                curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
+                                --upload-file frontend.zip \
+                                http://nexus:8081/repository/frontend-raw/frontend-${version}.zip
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
     post {
