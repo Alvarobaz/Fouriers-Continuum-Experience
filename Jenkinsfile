@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -10,23 +9,28 @@ pipeline {
     stages {
 
         stage('Clean Workspace') {
-            steps { deleteDir() }
+            steps {
+                deleteDir()
+            }
         }
 
         stage('Checkout SCM') {
-            steps { checkout scm }
+            steps {
+                checkout scm
+            }
         }
 
-        stage('Build Frontend') {
+        stage('Build Frontend (Node 16)') {
             steps {
                 dir('Front-End') {
+                    sh 'node -v'
                     sh 'npm ci --legacy-peer-deps'
                     sh 'npm run build'
                 }
             }
         }
 
-        stage('Build Backend') {
+        stage('Build Backend (Maven)') {
             steps {
                 dir('Back-End') {
                     sh 'mvn clean package -DskipTests'
@@ -34,82 +38,74 @@ pipeline {
             }
         }
 
-        stage('Package Frontend') {
+        stage('SonarQube Analysis') {
             steps {
-                dir('Front-End') {
-                    sh '''
-                        npx bestzip frontend.zip dist
-                        echo "Contenido Front-End:"
-                        ls -l
-                    '''
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
                 }
             }
         }
 
-        stage('Publish Backend to Nexus') {
+        // ===============================
+        // ✅ PUBLICACIÓN EN NEXUS
+        // ===============================
+        stage('Publish to Nexus') {
+            when {
+                branch 'main'   // 🔹 solo se ejecuta en main
+            }
             steps {
-                dir('Back-End') {
-                    script {
-                        withCredentials([usernamePassword(
-                            credentialsId: 'nexus-cred',
-                            usernameVariable: 'NEXUS_USER',
-                            passwordVariable: 'NEXUS_PASS'
-                        )]) {
+                script {
+                    def version = "1.0.${env.BUILD_NUMBER}"
 
-                            def groupId = "com.mycompany.issuetracking"
-                            def artifactId = "issuetracking"
-                            def version = "0.0.1-${env.BUILD_NUMBER}"
-                            def jarFile = "target/issuetracking-0.0.1-SNAPSHOT.jar"
+                    withCredentials([usernamePassword(
+                        credentialsId: 'nexus-cred',
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASS'
+                    )]) {
 
+                        echo "📦 Publicando BACKEND a Nexus con Maven..."
+                        dir('Back-End') {
                             sh """
-                                echo "Subiendo BACKEND a Nexus con Maven..."
                                 mvn deploy:deploy-file \
                                     -DrepositoryId=nexus \
                                     -Durl=http://nexus:8081/repository/maven-releases/ \
-                                    -Dfile=${jarFile} \
-                                    -DgroupId=${groupId} \
-                                    -DartifactId=${artifactId} \
+                                    -Dfile=target/*.jar \
+                                    -DgroupId=com.mycompany.issuetracking \
+                                    -DartifactId=issuetracking \
                                     -Dversion=${version} \
                                     -Dpackaging=jar \
                                     -DgeneratePom=true \
                                     -DrepositoryLayout=default \
-                                    -Dusername=$NEXUS_USER \
-                                    -Dpassword=$NEXUS_PASS
+                                    -Dusername=${NEXUS_USER} \
+                                    -Dpassword=${NEXUS_PASS}
                             """
                         }
-                    }
-                }
-            }
-        }
 
-        stage('Publish Frontend ZIP to Nexus') {
-            steps {
-                dir('Front-End') {
-                    script {
-                        withCredentials([usernamePassword(
-                            credentialsId: 'nexus-cred',
-                            usernameVariable: 'NEXUS_USER',
-                            passwordVariable: 'NEXUS_PASS'
-                        )]) {
-
-                            def version = "0.0.1-${env.BUILD_NUMBER}"
-
+                        echo "📦 Publicando FRONTEND a Nexus..."
+                        dir('Front-End') {
+                            // Creamos ZIP del frontend
+                            sh "zip -r frontend-${version}.zip dist"
                             sh """
-                                echo "Subiendo FRONTEND ZIP a repo raw..."
-                                curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
-                                --upload-file frontend.zip \
-                                http://nexus:8081/repository/frontend-raw/frontend-${version}.zip
+                                curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
+                                --upload-file frontend-${version}.zip \
+                                http://nexus:8081/repository/maven-releases/frontend-${version}.zip
                             """
                         }
                     }
                 }
             }
         }
-
     }
 
     post {
-        success { echo "✅ Pipeline completada correctamente" }
-        failure { echo "❌ Algo falló en la pipeline" }
+        success {
+            echo "✅ Pipeline completada correctamente"
+        }
+        failure {
+            echo "❌ Algo falló en la pipeline"
+        }
     }
 }
