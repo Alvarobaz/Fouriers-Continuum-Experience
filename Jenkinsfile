@@ -50,11 +50,11 @@ pipeline {
         }
 
         // ===============================
-        // ✅ NUEVO STAGE — PUBLISH NEXUS
+        // ✅ PUBLISH NEXUS
         // ===============================
         stage('Publish to Nexus') {
             when {
-                branch 'master'
+                branch 'main'   // ✅ SOLO ESTE CAMBIO
             }
             steps {
                 script {
