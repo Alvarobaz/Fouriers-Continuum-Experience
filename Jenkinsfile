@@ -20,6 +20,9 @@ pipeline {
             }
         }
 
+        // ===============================
+        // BUILD FRONTEND
+        // ===============================
         stage('Build Frontend (Node 16)') {
             steps {
                 dir('Front-End') {
@@ -30,6 +33,9 @@ pipeline {
             }
         }
 
+        // ===============================
+        // BUILD BACKEND
+        // ===============================
         stage('Build Backend (Maven)') {
             steps {
                 dir('Back-End') {
@@ -38,6 +44,9 @@ pipeline {
             }
         }
 
+        // ===============================
+        // SONARQUBE
+        // ===============================
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -50,11 +59,30 @@ pipeline {
         }
 
         // ===============================
-        // ✅ PUBLISH NEXUS
+        // CREATE FRONTEND ZIP
+        // ===============================
+        stage('Package Frontend') {
+            steps {
+                dir('Front-End') {
+                    sh '''
+                        echo "📦 Creando ZIP del frontend..."
+
+                        # crea zip SIN usar root ni apt
+                        npx bestzip frontend.zip dist
+
+                        echo "Contenido Front-End:"
+                        ls -l
+                    '''
+                }
+            }
+        }
+
+        // ===============================
+        // PUBLISH NEXUS
         // ===============================
         stage('Publish to Nexus') {
             when {
-                branch 'main'   // ✅ SOLO ESTE CAMBIO
+                branch 'main'
             }
             steps {
                 script {
@@ -69,19 +97,17 @@ pipeline {
 
                         echo "📦 Publicando artefactos versión ${version}"
 
-                        // BACKEND JAR
                         sh """
-                        curl -v -u $NEXUS_USER:$NEXUS_PASS \
+                        set -e
+
+                        echo "Subiendo BACKEND..."
+                        curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
                         --upload-file Back-End/target/*.jar \
                         http://nexus:8081/repository/maven-releases/backend-${version}.jar
-                        """
 
-                        // FRONTEND ZIP
-                        sh """
-                        cd Front-End
-                        zip -r frontend-${version}.zip dist
-                        curl -v -u $NEXUS_USER:$NEXUS_PASS \
-                        --upload-file frontend-${version}.zip \
+                        echo "Subiendo FRONTEND..."
+                        curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
+                        --upload-file Front-End/frontend.zip \
                         http://nexus:8081/repository/maven-releases/frontend-${version}.zip
                         """
                     }
