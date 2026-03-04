@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven'
-        nodejs 'NodeJS'
+        maven 'Maven 3.8.8'
+        nodejs 'node16'
     }
 
     stages {
@@ -23,6 +23,7 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir('Front-End') {
+                    sh 'node -v'
                     sh 'npm ci --legacy-peer-deps'
                     sh 'npm run build'
                 }
@@ -71,6 +72,9 @@ pipeline {
     post {
         success {
             echo '✅ Pipeline completada correctamente'
+        }
+        failure {
+            echo '❌ Algo falló'
         }
     }
 }
