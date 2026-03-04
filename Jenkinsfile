@@ -20,16 +20,21 @@ pipeline {
             }
         }
 
+        // =====================
+        // FRONTEND BUILD
+        // =====================
         stage('Build Frontend') {
             steps {
                 dir('Front-End') {
-                    sh 'node -v'
                     sh 'npm ci --legacy-peer-deps'
                     sh 'npm run build'
                 }
             }
         }
 
+        // =====================
+        // BACKEND BUILD
+        // =====================
         stage('Build Backend') {
             steps {
                 dir('Back-End') {
@@ -38,10 +43,14 @@ pipeline {
             }
         }
 
+        // =====================
+        // PUBLISH TO NEXUS
+        // =====================
         stage('Publish to Nexus') {
             when {
                 branch 'main'
             }
+
             steps {
                 script {
 
@@ -53,10 +62,9 @@ pipeline {
                         passwordVariable: 'NEXUS_PASS'
                     )]) {
 
-                        // =====================
-                        // BACKEND (MAVEN DEPLOY)
-                        // =====================
+                        // ================= BACKEND → MAVEN REPO
                         dir('Back-End') {
+
                             sh """
                             mvn deploy:deploy-file \
                               -DrepositoryId=nexus \
@@ -72,18 +80,16 @@ pipeline {
                             """
                         }
 
-                        // =====================
-                        // FRONTEND (ZIP + UPLOAD)
-                        // =====================
+                        // ================= FRONTEND → RAW REPO
                         dir('Front-End') {
 
                             sh "zip -r frontend-${version}.zip dist"
 
-                            sh '''
+                            sh """
                             curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
-                              --upload-file frontend-''' + version + '''.zip \
-                              http://nexus:8081/repository/maven-releases/frontend-''' + version + '''.zip
-                            '''
+                              --upload-file frontend-${version}.zip \
+                              http://nexus:8081/repository/raw-angular-dist/frontend-${version}.zip
+                            """
                         }
                     }
                 }
