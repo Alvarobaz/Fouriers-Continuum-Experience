@@ -6,11 +6,6 @@ pipeline {
         nodejs 'node16'
     }
 
-    environment {
-        DOCKER_REGISTRY = "nexus:5000"
-        IMAGE_NAME = "issuetracking"
-    }
-
     stages {
 
         stage('Clean Workspace') {
@@ -42,10 +37,7 @@ pipeline {
             }
         }
 
-        // =========================
-        // ✅ SUBIR JAR A NEXUS
-        // =========================
-        stage('Publish Artifact to Nexus') {
+        stage('Publish to Nexus') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'nexus-cred',
@@ -71,6 +63,8 @@ EOF
 
                     dir('Back-End') {
                         sh '''
+                        echo "🚀 Deployando a Nexus..."
+
                         mvn deploy:deploy-file \
                           -DrepositoryId=nexus \
                           -Durl=http://nexus:8081/repository/maven-releases/ \
@@ -85,46 +79,14 @@ EOF
                 }
             }
         }
-
-        // =====================================
-        // ✅ NUEVA ETAPA — DOCKER IMAGE + PUSH
-        // =====================================
-        stage('Build & Push Docker Image') {
-            steps {
-
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-cred',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-
-                    script {
-                        def version = "1.0.${env.BUILD_NUMBER}"
-                    }
-
-                    sh '''
-                    echo "🐳 Login Docker Nexus"
-                    docker login nexus:5000 -u $DOCKER_USER -p $DOCKER_PASS
-
-                    echo "🐳 Construyendo imagen Docker"
-                    docker build -t $DOCKER_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER} Back-End
-
-                    echo "🐳 Subiendo imagen a Nexus Docker Registry"
-                    docker push $DOCKER_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER}
-
-                    docker logout nexus:5000
-                    '''
-                }
-            }
-        }
     }
 
     post {
         success {
-            echo '✅ PIPELINE COMPLETA — Artefacto + Docker Image publicados'
+            echo '✅ TODO SUBIDO A NEXUS'
         }
         failure {
-            echo '❌ Algo falló'
+            echo '❌ FALLÓ EL DEPLOY'
         }
     }
 }
