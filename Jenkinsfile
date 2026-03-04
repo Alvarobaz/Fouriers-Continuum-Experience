@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven 3.8.8'
-        nodejs 'node16'
+        maven 'Maven'
+        nodejs 'NodeJS'
     }
 
     stages {
@@ -20,9 +20,6 @@ pipeline {
             }
         }
 
-        // =====================
-        // FRONTEND BUILD
-        // =====================
         stage('Build Frontend') {
             steps {
                 dir('Front-End') {
@@ -32,9 +29,6 @@ pipeline {
             }
         }
 
-        // =====================
-        // BACKEND BUILD
-        // =====================
         stage('Build Backend') {
             steps {
                 dir('Back-End') {
@@ -43,54 +37,31 @@ pipeline {
             }
         }
 
-        // =====================
-        // PUBLISH TO NEXUS
-        // =====================
         stage('Publish to Nexus') {
-            when {
-                branch 'main'
-            }
-
             steps {
-                script {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-cred',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
 
-                    def version = "1.0.${env.BUILD_NUMBER}"
+                    dir('Back-End') {
+                        sh '''
+                        echo "Subiendo BACKEND a Nexus..."
 
-                    withCredentials([usernamePassword(
-                        credentialsId: 'nexus-cred',
-                        usernameVariable: 'NEXUS_USER',
-                        passwordVariable: 'NEXUS_PASS'
-                    )]) {
-
-                        // ================= BACKEND → MAVEN REPO
-                        dir('Back-End') {
-
-                            sh """
-                            mvn deploy:deploy-file \
-                              -DrepositoryId=nexus \
-                              -Durl=http://nexus:8081/repository/maven-releases/ \
-                              -Dfile=target/*.jar \
-                              -DgroupId=com.mycompany.issuetracking \
-                              -DartifactId=issuetracking \
-                              -Dversion=${version} \
-                              -Dpackaging=jar \
-                              -DgeneratePom=true \
-                              -Dusername=$NEXUS_USER \
-                              -Dpassword=$NEXUS_PASS
-                            """
-                        }
-
-                        // ================= FRONTEND → RAW REPO
-                        dir('Front-End') {
-
-                            sh "zip -r frontend-${version}.zip dist"
-
-                            sh """
-                            curl -f -v -u $NEXUS_USER:$NEXUS_PASS \
-                              --upload-file frontend-${version}.zip \
-                              http://nexus:8081/repository/raw-angular-dist/frontend-${version}.zip
-                            """
-                        }
+                        mvn deploy:deploy-file \
+                          -DrepositoryId=nexus \
+                          -Durl=http://nexus:8081/repository/maven-releases/ \
+                          -Dfile=target/issuetracking-0.0.1-SNAPSHOT.jar \
+                          -DgroupId=com.mycompany.issuetracking \
+                          -DartifactId=issuetracking \
+                          -Dversion=1.0.${BUILD_NUMBER} \
+                          -Dpackaging=jar \
+                          -DgeneratePom=true \
+                          -DrepositoryLayout=default \
+                          -Dusername=$NEXUS_USER \
+                          -Dpassword=$NEXUS_PASS
+                        '''
                     }
                 }
             }
@@ -99,10 +70,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline completada correctamente"
-        }
-        failure {
-            echo "❌ Algo falló en la pipeline"
+            echo '✅ Pipeline completada correctamente'
         }
     }
 }
