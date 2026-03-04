@@ -23,7 +23,6 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir('Front-End') {
-                    sh 'node -v'
                     sh 'npm ci --legacy-peer-deps'
                     sh 'npm run build'
                 }
@@ -46,9 +45,25 @@ pipeline {
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
 
+                    sh '''
+                    mkdir -p ~/.m2
+
+                    cat > ~/.m2/settings.xml <<EOF
+<settings>
+  <servers>
+    <server>
+      <id>nexus</id>
+      <username>${NEXUS_USER}</username>
+      <password>${NEXUS_PASS}</password>
+    </server>
+  </servers>
+</settings>
+EOF
+                    '''
+
                     dir('Back-End') {
                         sh '''
-                        echo "Subiendo BACKEND a Nexus..."
+                        echo "🚀 Deployando a Nexus..."
 
                         mvn deploy:deploy-file \
                           -DrepositoryId=nexus \
@@ -58,10 +73,7 @@ pipeline {
                           -DartifactId=issuetracking \
                           -Dversion=1.0.${BUILD_NUMBER} \
                           -Dpackaging=jar \
-                          -DgeneratePom=true \
-                          -DrepositoryLayout=default \
-                          -Dusername=$NEXUS_USER \
-                          -Dpassword=$NEXUS_PASS
+                          -DgeneratePom=true
                         '''
                     }
                 }
@@ -71,10 +83,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline completada correctamente'
+            echo '✅ TODO SUBIDO A NEXUS'
         }
         failure {
-            echo '❌ Algo falló'
+            echo '❌ FALLÓ EL DEPLOY'
         }
     }
 }
