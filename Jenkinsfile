@@ -7,13 +7,13 @@ pipeline {
     }
 
     environment {
-        // Nexus
-        NEXUS_URL = "http://localhost:8081"
-        NEXUS_DOCKER = "localhost:5000"
+        // Nexus URLs accesibles desde Jenkins
+        NEXUS_URL = "http://nexus:8081"
+        NEXUS_DOCKER = "nexus:5000"
         NEXUS_REPO_MAVEN = "maven-releases"
         NEXUS_REPO_RAW_ANGULAR = "raw-angular-dist"
 
-        // Docker Images
+        // Docker images
         BACKEND_IMAGE = "fce-backend"
         FRONTEND_IMAGE = "fce-frontend"
 
@@ -41,7 +41,7 @@ pipeline {
         }
 
         // =====================
-        // FRONTEND BUILD
+        // FRONTEND
         // =====================
         stage('Build Frontend') {
             steps {
@@ -89,7 +89,7 @@ pipeline {
         }
 
         // =====================
-        // BACKEND BUILD
+        // BACKEND
         // =====================
         stage('Build Backend') {
             steps {
