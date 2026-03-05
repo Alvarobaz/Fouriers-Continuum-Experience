@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS'
-        jdk 'JDK17'
+        nodejs 'node16'
     }
 
     environment {
@@ -24,9 +23,7 @@ pipeline {
             }
         }
 
-        /* ==========================
-           FRONTEND BUILD
-        ========================== */
+        /* ================= FRONTEND ================= */
 
         stage('Build Frontend') {
             steps {
@@ -42,15 +39,11 @@ pipeline {
             }
         }
 
-        /* ==========================
-           ZIP FRONTEND (FIX FINAL)
-        ========================== */
-
         stage('Package Frontend') {
             steps {
                 dir('Front-End') {
                     sh '''
-                        echo "📦 Creando ZIP del frontend..."
+                        echo "📦 Creando ZIP..."
 
                         rm -f angular-${VERSION}.zip
 
@@ -59,10 +52,6 @@ pipeline {
                 }
             }
         }
-
-        /* ==========================
-           SUBIR A NEXUS
-        ========================== */
 
         stage('Publish Angular to Nexus') {
             steps {
@@ -74,9 +63,9 @@ pipeline {
                     )]) {
 
                         sh '''
-                            echo "🚀 Subiendo artefacto a Nexus..."
+                            echo "🚀 Subiendo frontend a Nexus..."
 
-                            curl -v -u $NEXUS_USER:$NEXUS_PASS \
+                            curl -u $NEXUS_USER:$NEXUS_PASS \
                               --upload-file angular-${VERSION}.zip \
                               http://nexus:8081/repository/angular/angular-${VERSION}.zip
                         '''
@@ -85,22 +74,20 @@ pipeline {
             }
         }
 
-        /* ==========================
-           BACKEND BUILD
-        ========================== */
+        /* ================= BACKEND ================= */
 
         stage('Build Backend') {
             steps {
                 dir('Back-End') {
                     sh '''
-                        echo "☕ Compilando backend..."
+                        echo "☕ Build backend..."
                         ./mvnw clean package -DskipTests
                     '''
                 }
             }
         }
 
-        stage('Publish Backend to Nexus') {
+        stage('Publish Backend') {
             steps {
                 dir('Back-End') {
                     withCredentials([usernamePassword(
@@ -110,10 +97,12 @@ pipeline {
                     )]) {
 
                         sh '''
-                            echo "🚀 Subiendo backend a Nexus..."
+                            echo "🚀 Subiendo backend..."
 
-                            curl -v -u $NEXUS_USER:$NEXUS_PASS \
-                              --upload-file target/*.jar \
+                            FILE=$(ls target/*.jar | head -n 1)
+
+                            curl -u $NEXUS_USER:$NEXUS_PASS \
+                              --upload-file $FILE \
                               http://nexus:8081/repository/backend/backend-${VERSION}.jar
                         '''
                     }
