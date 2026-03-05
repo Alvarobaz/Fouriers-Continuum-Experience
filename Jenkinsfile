@@ -1,14 +1,19 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven 3.8.8'
+        nodejs 'node16'
+    }
+
     environment {
         // Nexus
         NEXUS_URL = "http://localhost:8081"
         NEXUS_DOCKER = "localhost:5000"
         NEXUS_REPO_MAVEN = "maven-releases"
-        NEXUS_REPO_NPM = "npm-releases"
+        NEXUS_REPO_RAW_ANGULAR = "raw-angular-dist"
 
-        // Imágenes
+        // Docker Images
         BACKEND_IMAGE = "fce-backend"
         FRONTEND_IMAGE = "fce-frontend"
 
@@ -17,87 +22,125 @@ pipeline {
 
     stages {
 
-        // =========================
-        // CHECKOUT
-        // =========================
-        stage('Checkout') {
+        // =====================
+        // CLEAN WORKSPACE
+        // =====================
+        stage('Clean Workspace') {
             steps {
-                git 'https://github.com/Alvarobaz/Fouriers-Continuum-Experience'
+                deleteDir()
             }
         }
 
-        // =========================
-        // BUILD BACKEND
-        // =========================
-        stage('Build Backend') {
+        // =====================
+        // CHECKOUT MAIN
+        // =====================
+        stage('Checkout SCM') {
             steps {
-                dir('backend') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                git branch: 'main', url: 'https://github.com/Alvarobaz/Fouriers-Continuum-Experience'
             }
         }
 
-        // =========================
-        // PUBLICAR BACKEND A NEXUS
-        // =========================
-        stage('Publish Backend to Nexus') {
-            steps {
-                dir('backend') {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'nexus-cred',
-                        usernameVariable: 'NEXUS_USER',
-                        passwordVariable: 'NEXUS_PASS'
-                    )]) {
-                        sh '''
-                            mvn deploy -DskipTests \
-                              -Dnexus.username=$NEXUS_USER \
-                              -Dnexus.password=$NEXUS_PASS
-                        '''
-                    }
-                }
-            }
-        }
-
-        // =========================
-        // BUILD ANGULAR
-        // =========================
+        // =====================
+        // FRONTEND BUILD
+        // =====================
         stage('Build Frontend') {
             steps {
-                dir('frontend') {
+                dir('Front-End') {
                     sh '''
-                        npm install
+                        echo "📦 Instalando dependencias..."
+                        npm ci --legacy-peer-deps
+
+                        echo "🏗️ Build Angular..."
                         npm run build -- --configuration production
                     '''
                 }
             }
         }
 
-        // =========================
-        // PUBLICAR ANGULAR EN NEXUS (NPM)
-        // =========================
-        stage('Publish Frontend to Nexus') {
+        stage('Package Frontend') {
             steps {
-                dir('frontend') {
+                dir('Front-End') {
+                    sh '''
+                        echo "📦 Creando ZIP..."
+                        rm -f angular-${BUILD_NUMBER}.zip
+                        npx bestzip angular-${BUILD_NUMBER}.zip dist
+                    '''
+                }
+            }
+        }
+
+        stage('Publish Angular to Nexus') {
+            steps {
+                dir('Front-End') {
                     withCredentials([usernamePassword(
                         credentialsId: 'nexus-cred',
                         usernameVariable: 'NEXUS_USER',
                         passwordVariable: 'NEXUS_PASS'
                     )]) {
                         sh '''
-                            npm config set registry $NEXUS_URL/repository/$NEXUS_REPO_NPM/
-                            npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:username=$NEXUS_USER
-                            npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:_password=$(echo -n $NEXUS_PASS | base64)
-                            npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:email=fake@email.com
-                            npm publish --registry $NEXUS_URL/repository/$NEXUS_REPO_NPM/
+                            echo "🚀 Subiendo Angular a Nexus RAW..."
+                            curl -u $NEXUS_USER:$NEXUS_PASS \
+                              --upload-file angular-${BUILD_NUMBER}.zip \
+                              $NEXUS_URL/repository/$NEXUS_REPO_RAW_ANGULAR/angular-${BUILD_NUMBER}.zip
                         '''
                     }
                 }
             }
         }
 
-        // ==================================================
-        // DESCARGAR ARTEFACTOS DESDE NEXUS (REPRODUCIBLE)
-        // ==================================================
+        // =====================
+        // BACKEND BUILD
+        // =====================
+        stage('Build Backend') {
+            steps {
+                dir('Back-End') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Publish Backend to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-cred',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+                    sh '''
+                        mkdir -p ~/.m2
+                        cat > ~/.m2/settings.xml <<EOF
+<settings>
+    <servers>
+        <server>
+            <id>nexus</id>
+            <username>${NEXUS_USER}</username>
+            <password>${NEXUS_PASS}</password>
+        </server>
+    </servers>
+</settings>
+EOF
+                    '''
+                    dir('Back-End') {
+                        sh '''
+                            echo "🚀 Deployando backend a Nexus..."
+                            mvn deploy:deploy-file \
+                              -DrepositoryId=nexus \
+                              -Durl=$NEXUS_URL/repository/$NEXUS_REPO_MAVEN/ \
+                              -Dfile=target/issuetracking-0.0.1-SNAPSHOT.jar \
+                              -DgroupId=com.mycompany.issuetracking \
+                              -DartifactId=issuetracking \
+                              -Dversion=1.0.${BUILD_NUMBER} \
+                              -Dpackaging=jar \
+                              -DgeneratePom=true
+                        '''
+                    }
+                }
+            }
+        }
+
+        // =====================
+        // DESCARGAR ARTEFACTOS DESDE NEXUS
+        // =====================
         stage('Download artifacts from Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -108,25 +151,25 @@ pipeline {
                     sh '''
                         mkdir -p artifacts
 
-                        # Backend JAR desde Nexus
-                        curl -u $NEXUS_USER:$NEXUS_PASS \
-                          -L \
+                        echo "📥 Descargando backend JAR desde Nexus..."
+                        curl -u $NEXUS_USER:$NEXUS_PASS -L \
                           -o artifacts/backend.jar \
-                          $NEXUS_URL/repository/$NEXUS_REPO_MAVEN/com/fce/backend/${VERSION}/backend-${VERSION}.jar
+                          $NEXUS_URL/repository/$NEXUS_REPO_MAVEN/com/mycompany/issuetracking/1.0.${BUILD_NUMBER}/issuetracking-1.0.${BUILD_NUMBER}.jar
 
-                        # Frontend build
-                        cp -r frontend/dist artifacts/frontend
+                        echo "📥 Copiando frontend build..."
+                        cp -r Front-End/dist artifacts/frontend
                     '''
                 }
             }
         }
 
-        // =========================
-        // BUILD DOCKER BACKEND
-        // =========================
+        // =====================
+        // BUILD DOCKER IMAGES
+        // =====================
         stage('Build Backend Docker Image') {
             steps {
                 sh '''
+                    echo "🐳 Construyendo imagen backend..."
                     docker build \
                         -t $NEXUS_DOCKER/$BACKEND_IMAGE:$VERSION \
                         -f deployment/docker/backend/Dockerfile \
@@ -135,12 +178,10 @@ pipeline {
             }
         }
 
-        // =========================
-        // BUILD DOCKER FRONTEND
-        // =========================
         stage('Build Frontend Docker Image') {
             steps {
                 sh '''
+                    echo "🐳 Construyendo imagen frontend..."
                     docker build \
                         -t $NEXUS_DOCKER/$FRONTEND_IMAGE:$VERSION \
                         -f deployment/docker/frontend/Dockerfile \
@@ -149,9 +190,9 @@ pipeline {
             }
         }
 
-        // =========================
-        // LOGIN DOCKER NEXUS
-        // =========================
+        // =====================
+        // DOCKER LOGIN
+        // =====================
         stage('Docker Login Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -160,33 +201,38 @@ pipeline {
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
                     sh '''
+                        echo "🔐 Logueando en Nexus Docker..."
                         docker login $NEXUS_DOCKER \
-                            -u $NEXUS_USER \
-                            -p $NEXUS_PASS
+                          -u $NEXUS_USER \
+                          -p $NEXUS_PASS
                     '''
                 }
             }
         }
 
-        // =========================
-        // PUSH IMAGES
-        // =========================
+        // =====================
+        // PUSH DOCKER IMAGES
+        // =====================
         stage('Push Docker Images to Nexus') {
             steps {
                 sh '''
+                    echo "🚀 Pusheando backend..."
                     docker push $NEXUS_DOCKER/$BACKEND_IMAGE:$VERSION
+
+                    echo "🚀 Pusheando frontend..."
                     docker push $NEXUS_DOCKER/$FRONTEND_IMAGE:$VERSION
                 '''
             }
         }
+
     }
 
     post {
         success {
-            echo "✅ Pipeline COMPLETO OK — artefactos + imágenes en Nexus"
+            echo '✅ PIPELINE COMPLETO: Artefactos y Docker OK'
         }
         failure {
-            echo "❌ Pipeline falló"
+            echo '❌ PIPELINE FALLÓ'
         }
     }
 }
