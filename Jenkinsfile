@@ -20,6 +20,9 @@ pipeline {
             }
         }
 
+        // =========================
+        // BUILD FRONTEND
+        // =========================
         stage('Build Frontend') {
             steps {
                 dir('Front-End') {
@@ -29,6 +32,37 @@ pipeline {
             }
         }
 
+        // =========================
+        // PUBLICAR ANGULAR EN NEXUS (RAW)
+        // =========================
+        stage('Publish Angular to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-cred',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+
+                    dir('Front-End') {
+                        sh '''
+                        echo "📦 Comprimiendo build Angular..."
+
+                        zip -r angular-dist.zip dist/
+
+                        echo "🚀 Subiendo Angular a Nexus RAW..."
+
+                        curl -u $NEXUS_USER:$NEXUS_PASS \
+                          --upload-file angular-dist.zip \
+                          http://nexus:8081/repository/raw-angular-dist/angular-dist.zip
+                        '''
+                    }
+                }
+            }
+        }
+
+        // =========================
+        // BUILD BACKEND
+        // =========================
         stage('Build Backend') {
             steps {
                 dir('Back-End') {
@@ -37,6 +71,9 @@ pipeline {
             }
         }
 
+        // =========================
+        // PUBLICAR BACKEND EN NEXUS (MAVEN)
+        // =========================
         stage('Publish to Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -63,7 +100,7 @@ EOF
 
                     dir('Back-End') {
                         sh '''
-                        echo "🚀 Deployando a Nexus..."
+                        echo "🚀 Deployando backend a Nexus..."
 
                         mvn deploy:deploy-file \
                           -DrepositoryId=nexus \
@@ -83,7 +120,7 @@ EOF
 
     post {
         success {
-            echo '✅ TODO SUBIDO A NEXUS'
+            echo '✅ FRONTEND Y BACKEND SUBIDOS A NEXUS'
         }
         failure {
             echo '❌ FALLÓ EL DEPLOY'
