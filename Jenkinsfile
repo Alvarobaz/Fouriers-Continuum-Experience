@@ -2,8 +2,12 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven 3.8.8'
-        nodejs 'node16'
+        nodejs 'NodeJS'
+        jdk 'JDK17'
+    }
+
+    environment {
+        VERSION = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -20,97 +24,97 @@ pipeline {
             }
         }
 
-        // =========================
-        // BUILD FRONTEND
-        // =========================
+        /* ==========================
+           FRONTEND BUILD
+        ========================== */
+
         stage('Build Frontend') {
             steps {
                 dir('Front-End') {
-                    sh 'npm ci --legacy-peer-deps'
-                    sh 'npm run build'
+                    sh '''
+                        echo "📦 Instalando dependencias..."
+                        npm ci --legacy-peer-deps
+
+                        echo "🏗️ Build Angular..."
+                        npm run build
+                    '''
                 }
             }
         }
 
-        // ✅ SOLO ESTA ETAPA ES NUEVA (ANGULAR → NEXUS RAW)
-        stage('Publish Angular to Nexus') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-cred',
-                    usernameVariable: 'NEXUS_USER',
-                    passwordVariable: 'NEXUS_PASS'
-                )]) {
+        /* ==========================
+           ZIP FRONTEND (FIX FINAL)
+        ========================== */
 
-                    dir('Front-End') {
-                        sh '''
+        stage('Package Frontend') {
+            steps {
+                dir('Front-End') {
+                    sh '''
                         echo "📦 Creando ZIP del frontend..."
 
-                        rm -f angular-${BUILD_NUMBER}.zip
+                        rm -f angular-${VERSION}.zip
 
-                        zip -r angular-${BUILD_NUMBER}.zip dist
+                        npx bestzip angular-${VERSION}.zip dist
+                    '''
+                }
+            }
+        }
 
-                        echo "🚀 Subiendo Angular a Nexus RAW..."
+        /* ==========================
+           SUBIR A NEXUS
+        ========================== */
 
-                        curl -f -u $NEXUS_USER:$NEXUS_PASS \
-                          --upload-file angular-${BUILD_NUMBER}.zip \
-                          http://nexus:8081/repository/raw-angular-dist/angular-${BUILD_NUMBER}.zip
+        stage('Publish Angular to Nexus') {
+            steps {
+                dir('Front-End') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'nexus-credentials',
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASS'
+                    )]) {
+
+                        sh '''
+                            echo "🚀 Subiendo artefacto a Nexus..."
+
+                            curl -v -u $NEXUS_USER:$NEXUS_PASS \
+                              --upload-file angular-${VERSION}.zip \
+                              http://nexus:8081/repository/angular/angular-${VERSION}.zip
                         '''
                     }
                 }
             }
         }
 
-        // =========================
-        // BUILD BACKEND
-        // =========================
+        /* ==========================
+           BACKEND BUILD
+        ========================== */
+
         stage('Build Backend') {
             steps {
                 dir('Back-End') {
-                    sh 'mvn clean package -DskipTests'
+                    sh '''
+                        echo "☕ Compilando backend..."
+                        ./mvnw clean package -DskipTests
+                    '''
                 }
             }
         }
 
-        // =========================
-        // TU DEPLOY ORIGINAL (NO TOCADO)
-        // =========================
-        stage('Publish to Nexus') {
+        stage('Publish Backend to Nexus') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-cred',
-                    usernameVariable: 'NEXUS_USER',
-                    passwordVariable: 'NEXUS_PASS'
-                )]) {
+                dir('Back-End') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'nexus-credentials',
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASS'
+                    )]) {
 
-                    sh '''
-                    mkdir -p ~/.m2
-
-                    cat > ~/.m2/settings.xml <<EOF
-<settings>
-  <servers>
-    <server>
-      <id>nexus</id>
-      <username>${NEXUS_USER}</username>
-      <password>${NEXUS_PASS}</password>
-    </server>
-  </servers>
-</settings>
-EOF
-                    '''
-
-                    dir('Back-End') {
                         sh '''
-                        echo "🚀 Deployando a Nexus..."
+                            echo "🚀 Subiendo backend a Nexus..."
 
-                        mvn deploy:deploy-file \
-                          -DrepositoryId=nexus \
-                          -Durl=http://nexus:8081/repository/maven-releases/ \
-                          -Dfile=target/issuetracking-0.0.1-SNAPSHOT.jar \
-                          -DgroupId=com.mycompany.issuetracking \
-                          -DartifactId=issuetracking \
-                          -Dversion=1.0.${BUILD_NUMBER} \
-                          -Dpackaging=jar \
-                          -DgeneratePom=true
+                            curl -v -u $NEXUS_USER:$NEXUS_PASS \
+                              --upload-file target/*.jar \
+                              http://nexus:8081/repository/backend/backend-${VERSION}.jar
                         '''
                     }
                 }
@@ -120,7 +124,7 @@ EOF
 
     post {
         success {
-            echo '✅ TODO SUBIDO A NEXUS'
+            echo '✅ DEPLOY COMPLETADO'
         }
         failure {
             echo '❌ FALLÓ EL DEPLOY'
