@@ -32,9 +32,7 @@ pipeline {
             }
         }
 
-        // =========================
-        // PUBLICAR ANGULAR EN NEXUS (RAW)
-        // =========================
+        // ✅ SOLO ESTA ETAPA ES NUEVA (ANGULAR → NEXUS RAW)
         stage('Publish Angular to Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -45,15 +43,17 @@ pipeline {
 
                     dir('Front-End') {
                         sh '''
-                        echo "📦 Comprimiendo build Angular..."
+                        echo "📦 Creando ZIP del frontend..."
 
-                        zip -r angular-dist.zip dist/
+                        rm -f angular-${BUILD_NUMBER}.zip
+
+                        zip -r angular-${BUILD_NUMBER}.zip dist
 
                         echo "🚀 Subiendo Angular a Nexus RAW..."
 
-                        curl -u $NEXUS_USER:$NEXUS_PASS \
-                          --upload-file angular-dist.zip \
-                          http://nexus:8081/repository/raw-angular-dist/angular-dist.zip
+                        curl -f -u $NEXUS_USER:$NEXUS_PASS \
+                          --upload-file angular-${BUILD_NUMBER}.zip \
+                          http://nexus:8081/repository/raw-angular-dist/angular-${BUILD_NUMBER}.zip
                         '''
                     }
                 }
@@ -72,7 +72,7 @@ pipeline {
         }
 
         // =========================
-        // PUBLICAR BACKEND EN NEXUS (MAVEN)
+        // TU DEPLOY ORIGINAL (NO TOCADO)
         // =========================
         stage('Publish to Nexus') {
             steps {
@@ -100,7 +100,7 @@ EOF
 
                     dir('Back-End') {
                         sh '''
-                        echo "🚀 Deployando backend a Nexus..."
+                        echo "🚀 Deployando a Nexus..."
 
                         mvn deploy:deploy-file \
                           -DrepositoryId=nexus \
@@ -120,7 +120,7 @@ EOF
 
     post {
         success {
-            echo '✅ FRONTEND Y BACKEND SUBIDOS A NEXUS'
+            echo '✅ TODO SUBIDO A NEXUS'
         }
         failure {
             echo '❌ FALLÓ EL DEPLOY'
