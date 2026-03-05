@@ -8,7 +8,7 @@ pipeline {
         NEXUS_REPO_MAVEN = "maven-releases"
         NEXUS_REPO_NPM = "npm-releases"
 
-        // Imagenes
+        // Imágenes
         BACKEND_IMAGE = "fce-backend"
         FRONTEND_IMAGE = "fce-frontend"
 
@@ -48,12 +48,11 @@ pipeline {
                         usernameVariable: 'NEXUS_USER',
                         passwordVariable: 'NEXUS_PASS'
                     )]) {
-
-                        sh """
-                        mvn deploy -DskipTests \
-                        -Dnexus.username=$NEXUS_USER \
-                        -Dnexus.password=$NEXUS_PASS
-                        """
+                        sh '''
+                            mvn deploy -DskipTests \
+                              -Dnexus.username=$NEXUS_USER \
+                              -Dnexus.password=$NEXUS_PASS
+                        '''
                     }
                 }
             }
@@ -66,8 +65,8 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh '''
-                    npm install
-                    npm run build -- --configuration production
+                        npm install
+                        npm run build -- --configuration production
                     '''
                 }
             }
@@ -84,14 +83,13 @@ pipeline {
                         usernameVariable: 'NEXUS_USER',
                         passwordVariable: 'NEXUS_PASS'
                     )]) {
-
-                        sh """
-                        npm config set registry $NEXUS_URL/repository/$NEXUS_REPO_NPM/
-                        npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:username=$NEXUS_USER
-                        npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:_password=$(echo -n $NEXUS_PASS | base64)
-                        npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:email=fake@email.com
-                        npm publish --registry $NEXUS_URL/repository/$NEXUS_REPO_NPM/
-                        """
+                        sh '''
+                            npm config set registry $NEXUS_URL/repository/$NEXUS_REPO_NPM/
+                            npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:username=$NEXUS_USER
+                            npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:_password=$(echo -n $NEXUS_PASS | base64)
+                            npm config set //$NEXUS_URL/repository/$NEXUS_REPO_NPM/:email=fake@email.com
+                            npm publish --registry $NEXUS_URL/repository/$NEXUS_REPO_NPM/
+                        '''
                     }
                 }
             }
@@ -107,18 +105,18 @@ pipeline {
                     usernameVariable: 'NEXUS_USER',
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
+                    sh '''
+                        mkdir -p artifacts
 
-                    sh """
-                    mkdir artifacts
+                        # Backend JAR desde Nexus
+                        curl -u $NEXUS_USER:$NEXUS_PASS \
+                          -L \
+                          -o artifacts/backend.jar \
+                          $NEXUS_URL/repository/$NEXUS_REPO_MAVEN/com/fce/backend/${VERSION}/backend-${VERSION}.jar
 
-                    # Backend JAR desde Nexus
-                    curl -u $NEXUS_USER:$NEXUS_PASS \
-                    -o artifacts/backend.jar \
-                    $NEXUS_URL/repository/$NEXUS_REPO_MAVEN/com/fce/backend/${VERSION}/backend-${VERSION}.jar
-
-                    # Frontend build (ejemplo empaquetado)
-                    cp -r frontend/dist artifacts/frontend
-                    """
+                        # Frontend build
+                        cp -r frontend/dist artifacts/frontend
+                    '''
                 }
             }
         }
@@ -128,12 +126,12 @@ pipeline {
         // =========================
         stage('Build Backend Docker Image') {
             steps {
-                sh """
-                docker build \
-                -t $NEXUS_DOCKER/$BACKEND_IMAGE:$VERSION \
-                -f deployment/docker/backend/Dockerfile \
-                .
-                """
+                sh '''
+                    docker build \
+                        -t $NEXUS_DOCKER/$BACKEND_IMAGE:$VERSION \
+                        -f deployment/docker/backend/Dockerfile \
+                        .
+                '''
             }
         }
 
@@ -142,12 +140,12 @@ pipeline {
         // =========================
         stage('Build Frontend Docker Image') {
             steps {
-                sh """
-                docker build \
-                -t $NEXUS_DOCKER/$FRONTEND_IMAGE:$VERSION \
-                -f deployment/docker/frontend/Dockerfile \
-                .
-                """
+                sh '''
+                    docker build \
+                        -t $NEXUS_DOCKER/$FRONTEND_IMAGE:$VERSION \
+                        -f deployment/docker/frontend/Dockerfile \
+                        .
+                '''
             }
         }
 
@@ -161,12 +159,11 @@ pipeline {
                     usernameVariable: 'NEXUS_USER',
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
-
-                    sh """
-                    docker login $NEXUS_DOCKER \
-                    -u $NEXUS_USER \
-                    -p $NEXUS_PASS
-                    """
+                    sh '''
+                        docker login $NEXUS_DOCKER \
+                            -u $NEXUS_USER \
+                            -p $NEXUS_PASS
+                    '''
                 }
             }
         }
@@ -176,10 +173,10 @@ pipeline {
         // =========================
         stage('Push Docker Images to Nexus') {
             steps {
-                sh """
-                docker push $NEXUS_DOCKER/$BACKEND_IMAGE:$VERSION
-                docker push $NEXUS_DOCKER/$FRONTEND_IMAGE:$VERSION
-                """
+                sh '''
+                    docker push $NEXUS_DOCKER/$BACKEND_IMAGE:$VERSION
+                    docker push $NEXUS_DOCKER/$FRONTEND_IMAGE:$VERSION
+                '''
             }
         }
     }
